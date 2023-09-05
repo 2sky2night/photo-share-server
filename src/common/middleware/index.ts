@@ -1,0 +1,1 @@
+export { TokenParseMiddleware } from './token-parse.middleware'
