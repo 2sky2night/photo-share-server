@@ -1,5 +1,6 @@
-import { Table, Model, Column, PrimaryKey, Comment, DataType, AutoIncrement, Length, Default } from "sequelize-typescript";
+import { Table, Model, Column, PrimaryKey, Comment, DataType, AutoIncrement, Length, Default, HasMany, BelongsTo } from "sequelize-typescript";
 import { Role, Roles, roles } from "../../auth/role";
+import { Photo } from "../../photo/model/photo.model";
 @Table({
   tableName: 'user'
 })
@@ -15,7 +16,7 @@ export class User extends Model<User>{
   @Column(DataType.STRING)
   username: string;
 
-  @Comment('账户密码')  
+  @Comment('账户密码')
   @Column(DataType.STRING)
   password: string;
 
@@ -28,4 +29,16 @@ export class User extends Model<User>{
   @Column(DataType.ENUM(...roles))
   // @Default(Roles.User)
   role: Role
+
+  // 一个作者有多个照片 (这样设置后，publish_id会作为Photo表的外键，引用User表的uid，默认引用主键)
+  @HasMany(() => Photo, 'publish_uid')
+  authorPhotos: Photo[]
+
+  // 一个审核可以审核多个照片 (这样设置后，audit_uid会作为Photo表的外键，引用User表的uid，自定义指定引用User的uid字段)
+  @HasMany(() => Photo, {
+    sourceKey: 'uid',
+    foreignKey:'audit_uid'
+  })
+  auditPhotos: Photo[]
+
 }

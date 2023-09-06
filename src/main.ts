@@ -3,9 +3,12 @@ import { AppModule } from './app.module'
 import { PORT } from './config'
 import { AppLogger, ResponseInterceptor } from './common/interceptor'
 import { HttpExceptionFilter, InternalErrorFilter } from './common/filter'
+import { StaticImgMiddleware } from './common/middleware'
 
 async function appStart() {
   const app = await NestFactory.create(AppModule)
+  // 静态图片资源
+  app.use(StaticImgMiddleware)
   // 注册捕获全部错误过滤器
   app.useGlobalFilters(new InternalErrorFilter())
   // 注册http请求错误过滤器

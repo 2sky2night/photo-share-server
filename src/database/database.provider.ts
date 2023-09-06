@@ -2,6 +2,7 @@ import { Provider } from "@nestjs/common";
 import { databaseConfig } from "../config";
 import { Sequelize } from "sequelize-typescript";
 import { User } from "../modules/user/model/user.model";
+import { Photo } from "../modules/photo/model/photo.model";
 
 export const databaseProvider: Provider[] = [
   {
@@ -10,7 +11,8 @@ export const databaseProvider: Provider[] = [
       const sequelize = new Sequelize(databaseConfig)
       // 添加模型
       sequelize.addModels([
-        User
+        User,
+        Photo
       ])
       // 根据模型创建表
       await sequelize.sync()

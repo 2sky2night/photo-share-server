@@ -32,7 +32,7 @@ export class AuthGuard implements CanActivate {
   async findUser(uid: number) {
     const user = await this.userModel.findByPk(uid)
     if (user === null) {
-      throw new UnauthorizedException('用户id不合法!')
+      throw new UnauthorizedException('此id的用户不存在!')
     }
   }
   // 从请求头部获取token
