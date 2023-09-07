@@ -100,6 +100,15 @@ export class PhotoService {
 
   }
   /**
+   * 浏览照片数据上报
+   * @param pid 
+   */
+  async viewPhoto(pid: number) {
+    const photo = await this.findPhoto(pid)
+    photo.views++
+    await photo.save()
+  }
+  /**
    * 分页浏览该用户发布的照片(准备废弃)
    * @param uid 作者id
    * @param offset 起始偏移量 

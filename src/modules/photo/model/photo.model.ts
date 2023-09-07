@@ -2,6 +2,7 @@ import { Table, Model, Column, PrimaryKey, AutoIncrement, Comment, DataType, Len
 import { User } from "../../user/model/user.model";
 import { AuditStatusList } from "../../../types/photo";
 import { UserLikePhoto } from "./user-like-photo.model";
+import { UserCommentPhoto } from "./user-comment-photo";
 
 @Table({
   tableName: 'photo'
@@ -53,6 +54,11 @@ export class Photo extends Model<Photo>{
   @Column(DataType.TINYINT)
   status: AuditStatusList
 
+  @Comment('浏览量')
+  @Default(0)
+  @Column(DataType.INTEGER)
+  views: number;
+
   // 一个照片只能有一个作者,(声明publish_uid是外键)
   @BelongsTo(() => User, 'publish_uid')
   author: User
@@ -65,6 +71,10 @@ export class Photo extends Model<Photo>{
   @BelongsToMany(() => User, () => UserLikePhoto, 'pid')
   // 关联名称，sequelize会以likeds创建操作User的函数
   likeds: User[]
+
+  // 一个照片有多个评论
+  @BelongsToMany(() => User, () => UserCommentPhoto, 'pid')
+  commentor:User[]
 
   /**
    * 获取喜欢该照片的用户

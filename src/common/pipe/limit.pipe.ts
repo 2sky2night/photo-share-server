@@ -1,4 +1,5 @@
 import { BadRequestException, PipeTransform } from "@nestjs/common";
+import tips from "../tips";
 
 /**
  * limit管道
@@ -11,10 +12,10 @@ export class LimitPipe implements PipeTransform<string | undefined, number> {
     }
     const limit = parseInt(value)
     if (isNaN(limit)) {
-      throw new BadRequestException('limit必须为数字型!')
+      throw new BadRequestException(tips.paramsError('limit'))
     }
     if (limit < 0) {
-      throw new BadRequestException('limit为正数!')
+      throw new BadRequestException(tips.paramsError('limit'))
     }
     return limit
   }

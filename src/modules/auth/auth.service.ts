@@ -7,6 +7,7 @@ import { decrpty } from "../../common/crypto";
 import { PASSWORD_SECRET } from "../../config";
 import { JwtService } from "@nestjs/jwt";
 import { AuthUpdateDto } from "./dto/auth-update.dto";
+import { AuthRegiterAdminDto } from "./dto/auth-register-admin.dto";
 
 @Injectable()
 export class AuthService {
@@ -54,5 +55,11 @@ export class AuthService {
     // 更新用户密码
     await this.userService.updateUserPassword(uid, password)
     return true
+  }
+  /**
+   * 注册管理员账户
+   */
+  async registerAdmin(authRegiterAdminDto: AuthRegiterAdminDto) {
+    return await this.userService.createUser(authRegiterAdminDto, Roles.Admin)
   }
 }

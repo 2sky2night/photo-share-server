@@ -1,11 +1,12 @@
 import { BadRequestException, NotFoundException, PipeTransform } from "@nestjs/common";
 import { Photo } from "../../modules/photo/model/photo.model";
 import tips from "../tips";
+import { AuditStatusList } from "../../types/photo";
 
 /**
- * 照片存在管道
+ * 照片审核通过管道
  */
-export class PhotoPipe implements PipeTransform<string, Promise<number>> {
+export class PhotoPassPipe implements PipeTransform<string, Promise<number>>{
   private photoModel: typeof Photo
   constructor() {
     this.photoModel = Photo
@@ -22,6 +23,11 @@ export class PhotoPipe implements PipeTransform<string, Promise<number>> {
     if (photo === null) {
       throw new NotFoundException(tips.notFound('照片'))
     }
-    return _pid
+    if (photo.status === AuditStatusList.Pass) {
+      // 审核通过的照片
+      return _pid
+    } else {
+      throw new BadRequestException(tips.photoIsNotAudit)
+    }
   }
 }

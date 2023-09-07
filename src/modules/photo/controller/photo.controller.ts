@@ -1,5 +1,5 @@
 import { Controller, Post, Body, UseGuards, BadRequestException, Param, ParseIntPipe, Get, Query, Req, Optional, UseInterceptors } from "@nestjs/common";
-import { LimitPipe, OffsetPipe, IntOptionalPipe, UserOptionalPipe, ValidationPipe } from "../../../common/pipe";
+import { LimitPipe, OffsetPipe, IntOptionalPipe, UserOptionalPipe, ValidationPipe, PhotoPipe } from "../../../common/pipe";
 import { PhotoCreateDto } from "../dto/photo-create.dto";
 import { AuthGuard, RoleGuard } from "../../../common/guard";
 import { Roles } from "../../auth/role";
@@ -128,5 +128,17 @@ export class PhotoController {
     @Query('limit', LimitPipe) limit: number,
   ) {
     return await this.photoService.userFindPhotos(uid, status, offset, limit, currentUid)
+  }
+  /**
+   * 上报照片浏览量
+   * @param pid 
+   * @returns 
+   */
+  @Post('view/:pid')
+  async viewPhoto(
+    @Param('pid',PhotoPipe) pid:number
+  ) {
+    await this.photoService.viewPhoto(pid)
+    return null
   }
 }

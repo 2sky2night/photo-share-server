@@ -1,4 +1,5 @@
 import { BadRequestException, PipeTransform } from "@nestjs/common";
+import tips from "../tips";
 
 /**
  * offset管道
@@ -11,10 +12,10 @@ export class OffsetPipe implements PipeTransform<string | undefined, number> {
     }
     const offset = parseInt(value)
     if (isNaN(offset)) {
-      throw new BadRequestException('offset必须为数字型!')
+      throw new BadRequestException(tips.paramsError('offset'))
     }
     if (offset < 0) {
-      throw new BadRequestException('offset必须为正数!')
+      throw new BadRequestException(tips.paramsError('offset'))
     }
     return offset
   }

@@ -506,32 +506,31 @@ export class ValidationPipe implements PipeTransform<any> {
 
 ##### 照片 id 管道
 
-```ts
-import {
-  BadRequestException,
-  NotFoundException,
-  PipeTransform,
-} from "@nestjs/common";
-import { Photo } from "../../modules/photo/model/photo.model";
+​	校验参数的管道，pid，照片必须存在才能放行的中间件。
 
-export class PhotoPipe implements PipeTransform<string, number> {
-  private photoModel: typeof Photo;
+```ts
+import { BadRequestException, NotFoundException, PipeTransform } from "@nestjs/common";
+import { Photo } from "../../modules/photo/model/photo.model";
+import tips from "../tips";
+
+export class PhotoPipe implements PipeTransform<string, Promise<number>> {
+  private photoModel: typeof Photo
   constructor() {
-    this.photoModel = Photo;
+    this.photoModel = Photo
   }
-  transform(pid: string) {
+  async transform(pid: string) {
     // value为传入的值,该函数返回啥则被修饰的参数就会是什么
     // 解析pid
-    const _pid = +pid;
+    const _pid = +pid
     if (isNaN(_pid)) {
-      throw new BadRequestException("照片的id必须是一个数字!");
+      throw new BadRequestException(tips.paramsError('pid'))
     }
     // 查询pid在数据库中是否存在
-    const photo = this.photoModel.findByPk(_pid);
+    const photo = await this.photoModel.findByPk(_pid)
     if (photo === null) {
-      throw new NotFoundException("此id的照片不存在!");
+      throw new NotFoundException(tips.notFound('照片'))
     }
-    return _pid;
+    return _pid
   }
 }
 ```
@@ -689,6 +688,43 @@ export class UserPipe implements PipeTransform<string, Promise<number>>{
     }
     if (user.role !== Roles.User) {
       throw new BadRequestException(tips.roleError)
+    }
+  }
+}
+```
+
+##### 审核通过的照片管道
+
+ 照片必须存在，且照片必须是审核通过的才能放行的管道
+
+```ts
+import { BadRequestException, NotFoundException, PipeTransform } from "@nestjs/common";
+import { Photo } from "../../modules/photo/model/photo.model";
+import tips from "../tips";
+import { AuditStatusList } from "../../types/photo";
+
+export class PhotoPassPipe implements PipeTransform<string, Promise<number>>{
+  private photoModel: typeof Photo
+  constructor() {
+    this.photoModel = Photo
+  }
+  async transform(pid: string) {
+    // value为传入的值,该函数返回啥则被修饰的参数就会是什么
+    // 解析pid
+    const _pid = +pid
+    if (isNaN(_pid)) {
+      throw new BadRequestException(tips.paramsError('pid'))
+    }
+    // 查询pid在数据库中是否存在
+    const photo = await this.photoModel.findByPk(_pid)
+    if (photo === null) {
+      throw new NotFoundException(tips.notFound('照片'))
+    }
+    if (photo.status === AuditStatusList.Pass) {
+      // 审核通过的照片
+      return _pid
+    } else {
+      throw new BadRequestException(tips.photoIsNotAudit)
     }
   }
 }
@@ -1218,6 +1254,10 @@ export const TokenOptional = createParamDecorator(
 
  分别调用 userService 的修改用户基本信息和用户密码。
 
+##### 超级管理员下发Admin账户
+
+​	超级管理员可以创建Admin角色的账户，通过守卫只允许超级管理员访问该接口。
+
 ##### 源代码
 
 ```ts
@@ -1285,6 +1325,8 @@ export class AuthService {
 }
 ```
 
+
+
 #### 2.控制层
 
 ##### 登录
@@ -1347,20 +1389,14 @@ export class AuthService {
   }
 ```
 
+##### 下发管理员账号
+
+​	超级管理员可以注册一个管理员账户
+
 ##### 源代码
 
 ```ts
-import {
-  Body,
-  Controller,
-  Get,
-  Put,
-  Param,
-  ParseIntPipe,
-  Post,
-  Req,
-  UseGuards,
-} from "@nestjs/common";
+import { Body, Controller, Get, Put, Param, ParseIntPipe, Post, Req, UseGuards } from "@nestjs/common";
 import { ValidationPipe } from "../../common/pipe";
 import { AuthRegisterDto } from "./dto/auth-register.dto";
 import { AuthService } from "./auth.service";
@@ -1372,38 +1408,52 @@ import { TokenData } from "../../types/token";
 import { AuthUpdateDto } from "./dto/auth-update.dto";
 import { Role } from "../../common/decorator/role.decorator";
 import { Roles } from "./role";
+import { AuthRegiterAdminDto } from "./dto/auth-register-admin.dto";
 
-@Controller("auth")
+@Controller('auth')
 export class AuthController {
   constructor(
     // 注入auth服务层 不需要使用Inject来注入，因为AuthService在模块中已经作为提供者了
     private authService: AuthService
-  ) {}
+  ) { }
 
-  @Post("register")
+  // 注册一个普通用户
+  @Post('register')
   async register(@Body(new ValidationPipe()) authRegisterDto: AuthRegisterDto) {
-    return await this.authService.register(authRegisterDto);
+    await this.authService.register(authRegisterDto)
+    return null
   }
-  @Post("login")
+
+  // 登录
+  @Post('login')
   async login(@Body(new ValidationPipe()) authLoginDto: AuthLoginDto) {
-    return await this.authService.login(authLoginDto);
+    return await this.authService.login(authLoginDto)
   }
+
+  // 超级管理员更新用户信息
   @Role(Roles.SuperAdmin)
   @UseGuards(AuthGuard, RoleGuard)
-  @Put("update/:uid")
-  // 超级管理员更新用户信息
-  async updateUser(
-    @Param("uid", ParseIntPipe) uid: number,
-    @Body(new ValidationPipe()) authUpdateDto: AuthUpdateDto
-  ) {
-    await this.authService.updateUser(uid, authUpdateDto);
-    return "更新用户信息成功!";
+  @Put('update/:uid')
+  async updateUser(@Param('uid', ParseIntPipe) uid: number, @Body(new ValidationPipe()) authUpdateDto: AuthUpdateDto) {
+    await this.authService.updateUser(uid, authUpdateDto)
+    return '更新用户信息成功!'
   }
+  // 解析token
   @UseGuards(AuthGuard)
-  @Get("token")
+  @Get('token')
   token(@Req() req: Request, @Token() token: TokenData) {
     // @ts-ignore
-    return req.user;
+    return req.user
+  }
+  // 超级管理员注册账户
+  @Role(Roles.SuperAdmin)
+  @UseGuards(AuthGuard, RoleGuard)
+  @Post('register/admin')
+  async registerAdmin(
+    @Body(new ValidationPipe()) authRegiterAdminDto: AuthRegiterAdminDto
+  ) {
+    await this.authService.registerAdmin(authRegiterAdminDto)
+    return null
   }
 }
 ```
@@ -1804,6 +1854,7 @@ import { Table, Model, Column, PrimaryKey, AutoIncrement, Comment, DataType, Len
 import { User } from "../../user/model/user.model";
 import { AuditStatusList } from "../../../types/photo";
 import { UserLikePhoto } from "./user-like-photo.model";
+import { UserCommentPhoto } from "./user-comment-photo";
 
 @Table({
   tableName: 'photo'
@@ -1848,12 +1899,17 @@ export class Photo extends Model<Photo>{
   @Length({ msg: '审核描述长度为1-255', min: 1, max: 255 })
   @AllowNull
   @Column(DataType.STRING)
-  audit_desc: string|null;
+  audit_desc: string | null;
 
   @Comment('审核状态，0未审核 1审核通过 2审核不通过')
   @Default(0)
   @Column(DataType.TINYINT)
   status: AuditStatusList
+
+  @Comment('浏览量')
+  @Default(0)
+  @Column(DataType.INTEGER)
+  views: number;
 
   // 一个照片只能有一个作者,(声明publish_uid是外键)
   @BelongsTo(() => User, 'publish_uid')
@@ -1864,8 +1920,18 @@ export class Photo extends Model<Photo>{
   auditor: User
 
   // 一个照片可以被多个用户喜欢
-  @BelongsToMany(()=>User,()=>UserLikePhoto,'pid')
-  liked:User[]
+  @BelongsToMany(() => User, () => UserLikePhoto, 'pid')
+  // 关联名称，sequelize会以likeds创建操作User的函数
+  likeds: User[]
+
+  // 一个照片有多个评论
+  @BelongsToMany(() => User, () => UserCommentPhoto, 'pid')
+  commentor:User[]
+
+  /**
+   * 获取喜欢该照片的用户
+   */
+  declare getLikeds: () => Promise<User[]>
 }
 ```
 
@@ -1891,13 +1957,79 @@ export class UserLikePhoto extends Model<UserLikePhoto> {
 }
 ```
 
-##### User 更新与 Photo 的关系
+##### UserCommentPhoto
+
+​	一个照片有多个用户评论，一个用户可以评论多个照片，多对多
+
+```ts
+import { Column, ForeignKey, Table, Comment, DataType, Length, Model, BelongsToMany, PrimaryKey } from "sequelize-typescript";
+import { User } from "../../user/model/user.model";
+import { Photo } from "./photo.model";
+import { UserLikeComment } from "./user-like-comment.model";
+
+@Table({ tableName: 'user_comment_photo' })
+export class UserCommentPhoto extends Model<UserCommentPhoto> {
+
+  @Comment('评论的id')
+  @PrimaryKey
+  @Column
+  cid: number;
+
+  @Comment('发布评论的用户')
+  @ForeignKey(() => User)
+  @Column
+  uid: number;
+
+  @Comment('评论的哪个照片')
+  @ForeignKey(() => Photo)
+  @Column
+  pid: number
+
+  @Comment('评论内容')
+  @Length({ min: 1, max: 255, msg: '评论内容长度为1-255位!' })
+  @Column(DataType.STRING)
+  content: string;
+
+  // 一个评论可以被多个用户点赞
+  @BelongsToMany(() => User, () => UserLikeComment, 'cid')
+  likedUser: User[]
+}
+```
+
+##### UserLikeComment
+
+​	用户可以点赞多个评论，一个评论可以被多个用户点赞，多对多
+
+```ts
+import { Column, Comment, ForeignKey, Model, Table } from "sequelize-typescript";
+import { User } from "../../user/model/user.model";
+import { UserCommentPhoto } from "./user-comment-photo";
+
+@Table({ tableName: 'user_like_comment' })
+export class UserLikeComment extends Model<UserLikeComment> {
+  @ForeignKey(() => User)
+  @Comment('点赞者')
+  @Column
+  uid: number;
+
+  @Comment('点赞的目标评论')
+  @ForeignKey(() => UserCommentPhoto)
+  @Column
+  cid: number;
+}
+```
+
+
+
+##### User表需要更新与 Photo 的关系
 
 ```ts
 import { Table, Model, Column, PrimaryKey, Comment, DataType, AutoIncrement, Length, Default, HasMany, BelongsTo, BelongsToMany } from "sequelize-typescript";
 import { Role, Roles, roles } from "../../auth/role";
 import { Photo } from "../../photo/model/photo.model";
 import { UserLikePhoto } from "../../photo/model/user-like-photo.model";
+import { UserCommentPhoto } from "../../photo/model/user-comment-photo";
+import { UserLikeComment } from "../../photo/model/user-like-comment.model";
 @Table({
   tableName: 'user'
 })
@@ -1934,14 +2066,21 @@ export class User extends Model<User>{
   // 一个审核可以审核多个照片 (这样设置后，audit_uid会作为Photo表的外键，引用User表的uid，自定义指定引用User的uid字段)
   @HasMany(() => Photo, {
     sourceKey: 'uid',
-    foreignKey:'audit_uid'
+    foreignKey: 'audit_uid'
   })
   auditPhotos: Photo[]
 
   // 一个用户可以喜欢多个照片
   @BelongsToMany(() => Photo, () => UserLikePhoto, 'uid')
-  likePhotos:Photo[]
+  likePhotos: Photo[]
 
+  // 一个用户可以评论多个照片
+  @BelongsToMany(() => Photo, () => UserCommentPhoto, 'uid')
+  commentedPhotos: Photo[]
+
+  // 一个用户可以点赞多个评论
+  @BelongsToMany(() => UserCommentPhoto, () => UserLikeComment, 'uid')
+  likedComments: UserCommentPhoto[]
 }
 ```
 
@@ -1989,11 +2128,11 @@ export const photoProvider: Provider[] = [
 
 ##### 点赞照片
 
-​	参数装饰器解析路径参数pid，下发给服务层
+​	参数装饰器解析路径参数pid，下发给服务层，**注意，只有审核通过的照片才能被点赞!!!**
 
 ##### 取消点赞照片
 
-​	参数装饰器解析路径参数pid，下发给服务层
+​	参数装饰器解析路径参数pid，下发给服务层,注意，**只有审核通过的照片才能被取消点赞!!!**
 
 ##### 管理员获取照片列表
 
@@ -2005,7 +2144,23 @@ export const photoProvider: Provider[] = [
 
 ##### User查看喜欢的照片
 
+???
 
+##### User发布照片的评论
+
+**注意，只有审核通过的照片才能被评论!!**
+
+User点赞评论
+
+
+
+User取消点赞评论
+
+
+
+##### User浏览照片上报
+
+​	User浏览照片时可以上报数据，增加照片的浏览量。注意，只有审核通过的才能被上报
 
 #### 4.服务层
 

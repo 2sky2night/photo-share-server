@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from "@nes
 import { UserLikePhoto } from "../model/user-like-photo.model";
 import { PhotoService } from "./photo.service";
 import { Photo } from "../model/photo.model";
+import tips from "../../../common/tips";
 
 @Injectable()
 export class UserLikePhotoService {
@@ -25,7 +26,7 @@ export class UserLikePhotoService {
       await this.userLikePhotoModel.create({ uid, pid })
       return
     } else {
-      throw new BadRequestException('请勿重复点赞!')
+      throw new BadRequestException(tips.likeError('照片'))
     }
   }
   /**
@@ -42,7 +43,7 @@ export class UserLikePhotoService {
       await this.userLikePhotoModel.destroy({ where: { uid, pid } })
       return
     } else {
-      throw new BadRequestException('还未对该照片点过赞!')
+      throw new BadRequestException(tips.removeLikeError('照片'))
     }
   }
   /**
