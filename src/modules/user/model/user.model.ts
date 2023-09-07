@@ -1,6 +1,7 @@
-import { Table, Model, Column, PrimaryKey, Comment, DataType, AutoIncrement, Length, Default, HasMany, BelongsTo } from "sequelize-typescript";
+import { Table, Model, Column, PrimaryKey, Comment, DataType, AutoIncrement, Length, Default, HasMany, BelongsTo, BelongsToMany } from "sequelize-typescript";
 import { Role, Roles, roles } from "../../auth/role";
 import { Photo } from "../../photo/model/photo.model";
+import { UserLikePhoto } from "../../photo/model/user-like-photo.model";
 @Table({
   tableName: 'user'
 })
@@ -40,5 +41,9 @@ export class User extends Model<User>{
     foreignKey:'audit_uid'
   })
   auditPhotos: Photo[]
+
+  // 一个用户可以喜欢多个照片
+  @BelongsToMany(() => Photo, () => UserLikePhoto, 'uid')
+  likePhotos:Photo[]
 
 }

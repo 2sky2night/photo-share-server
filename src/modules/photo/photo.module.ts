@@ -1,9 +1,10 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from "@nestjs/common";
 import { photoProvider } from "./photo.provider";
-import { PhotoService } from "./photo.service";
-import { PhotoController } from "./photo.controller";
+import { PhotoController, UserLikePhotoController } from "./controller";
 import { UserModule } from "../user/user.module";
+import { PhotoService } from './service'
 import { TokenParseMiddleware } from "../../common/middleware";
+import { UserLikePhotoService } from "./service/user-like-photo.service";
 
 @Module({
   imports: [
@@ -11,10 +12,12 @@ import { TokenParseMiddleware } from "../../common/middleware";
   ],
   providers: [
     ...photoProvider,
-    PhotoService
+    PhotoService,
+    UserLikePhotoService,
   ],
   controllers: [
-    PhotoController
+    PhotoController,
+    UserLikePhotoController
   ]
 })
 export class PhotoModule implements NestModule {

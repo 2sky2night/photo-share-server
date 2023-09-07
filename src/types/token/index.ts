@@ -3,3 +3,5 @@ export interface TokenData {
   iat: number
   exp: number
 }
+
+export type TokenKey = keyof TokenData

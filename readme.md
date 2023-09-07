@@ -615,6 +615,85 @@ export class StatusPipe implements PipeTransform<string|undefined, AuditStatus> 
 }
 ```
 
+##### 可选用户管道
+
+​	若传入了参数，则需要解析校验参数，并且要拿这个参数当前uid查询用户是否存在，且用户角色必须是User
+
+```ts
+import { ArgumentMetadata, BadRequestException, NotFoundException, PipeTransform } from "@nestjs/common";
+import tips from "../tips";
+import { User } from "../../modules/user/model/user.model";
+import { Roles } from "../../modules/auth/role";
+
+/**
+ * 可选用户管道，若参数为undefined，则直接返回，若传入了参数，则需要检验用户是否存在，且用户角色必须是User
+ */
+export class UserOptionalPipe implements PipeTransform<string, Promise<number | undefined>>{
+  userModel: typeof User
+  constructor() {
+    this.userModel = User
+  }
+  async transform(value: string | undefined): Promise<number | undefined> {
+    if (value === undefined) {
+      return undefined
+    }
+    const uid = +value
+    if (isNaN(uid)) {
+      throw new BadRequestException(tips.paramsError('uid'))
+    }
+    await this.getUser(uid)
+    return uid
+  }
+  async getUser(uid: number) {
+    const user = await this.userModel.findByPk(uid)
+    if (user === null) {
+      throw new NotFoundException(tips.noExist('用户'))
+    }
+    if (user.role !== Roles.User) {
+      throw new BadRequestException(tips.roleError)
+    }
+  }
+}
+```
+
+##### 必选User管道
+
+解析参数，参数作为用户id，且用户必须存在，且用户角色必须是User
+
+```ts
+import { BadRequestException, NotFoundException, PipeTransform } from "@nestjs/common";
+import { User } from "../../modules/user/model/user.model";
+import tips from "../tips";
+import { Roles } from "../../modules/auth/role";
+
+/**
+ * 用户管道，解析参数，并查询用户是否存在，且用户角色必须是User
+ */
+export class UserPipe implements PipeTransform<string, Promise<number>>{
+  userModel: typeof User
+  constructor() {
+    this.userModel = User
+  }
+  async transform(value: string): Promise<number> {
+    const uid = +value
+    if (isNaN(uid)) {
+      throw new BadRequestException(tips.paramsError('uid'))
+    }
+    await this.getUser(uid)
+    return uid
+  }
+  async getUser(uid: number) {
+    const user = await this.userModel.findByPk(uid)
+    if (user === null) {
+      throw new NotFoundException(tips.noExist('用户'))
+    }
+    if (user.role !== Roles.User) {
+      throw new BadRequestException(tips.roleError)
+    }
+  }
+}
+```
+
 
 
 #### 6.解析 token 的中间件
@@ -1014,6 +1093,107 @@ export async function StaticImgMiddleware(req: Request, res: Response, next: any
     next()
   }
 }
+```
+
+#### 11.User拦截器
+
+​	拦截管理员和超级管理员的拦截器
+
+```ts
+import { CallHandler, ExecutionContext, ForbiddenException, NestInterceptor, UnauthorizedException } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { Request } from "express";
+import { Observable } from "rxjs";
+import { JWT_SECRET } from "../../config";
+import { TokenData } from "../../types/token";
+import { User } from "../../modules/user/model/user.model";
+import { Roles } from "../../modules/auth/role";
+
+/**
+ * 用户拦截器，不拦截User和未登录用户
+ */
+export class UserInterceptor implements NestInterceptor {
+  jwtService: JwtService
+  userModel: typeof User
+  constructor() {
+    this.jwtService = new JwtService()
+    this.userModel = User
+  }
+  async intercept(context: ExecutionContext, next: CallHandler<any>): Promise<Observable<any>> {
+    const request = context.switchToHttp().getRequest<Request>()
+    const token = this.getToken(request)
+    if (token !== undefined) {
+      try {
+        const playload = await this.jwtService.verifyAsync(token, { secret: JWT_SECRET }) as TokenData
+        await this.checkUser(playload.sub)
+        // @ts-ignore 将解析出的token保存在上下文
+        request.user = playload
+        return next.handle()
+      } catch (error: any) {
+        throw new UnauthorizedException(error.toString ? error.toString() : 'token不合法!')
+      }
+    } else {
+      return next.handle()
+    }
+  }
+  async checkUser(uid: number) {
+    const user = await this.userModel.findByPk(uid)
+    if (user === null) {
+      throw new UnauthorizedException('此用户id不存在!')
+    } else {
+      if (user.role !== Roles.User) {
+        throw new ForbiddenException('无权访问!')
+      }
+    }
+  }
+  getToken(req: Request) {
+    const authorization = req.headers.authorization
+    if (authorization === undefined) {
+      return undefined
+    } else {
+      const [type, token] = authorization.split(' ')
+      if (type === 'Bearer') {
+        return token
+      } else {
+        throw new UnauthorizedException('token不合法!')
+      }
+    }
+  }
+}
+```
+
+#### 12.可选token解析的参数装饰
+
+​	有时候我们需要登录用户和未登录用户展示不同内容时，需要解析token中的数据，若未登录(无token)就不解析数据，登录了就解析token数据。
+
+```ts
+import { InternalServerErrorException, createParamDecorator } from "@nestjs/common";
+import { TokenData, TokenKey } from "../../types/token";
+import { ExecutionContextHost } from "@nestjs/core/helpers/execution-context-host";
+
+export const TokenOptional = createParamDecorator(
+  (data: TokenKey, input: ExecutionContextHost) => {
+    const request = input.switchToHttp().getRequest()
+    const playload = request.user as TokenData
+    if (playload === undefined) {
+      // 未登录用户
+      return undefined
+    } else {
+      // 登录用户
+      if (data === undefined) {
+        // 未指定属性值
+        return playload
+      } else {
+        const value = playload[data]
+        if (value === undefined) {
+          throw new InternalServerErrorException(`token中没有该属性:${data}`)
+        } else {
+          return value
+        }
+      }
+    }
+  }
+)
 ```
 
 
@@ -1620,138 +1800,148 @@ export class UserModule {}
 ##### Photo
 
 ```ts
-import {
-  Table,
-  Model,
-  Column,
-  PrimaryKey,
-  AutoIncrement,
-  Comment,
-  DataType,
-  Length,
-  ForeignKey,
-  BelongsTo,
-  NotNull,
-  AllowNull,
-  Default,
-} from "sequelize-typescript";
+import { Table, Model, Column, PrimaryKey, AutoIncrement, Comment, DataType, Length, ForeignKey, BelongsTo, NotNull, AllowNull, Default, BelongsToMany } from "sequelize-typescript";
 import { User } from "../../user/model/user.model";
+import { AuditStatusList } from "../../../types/photo";
+import { UserLikePhoto } from "./user-like-photo.model";
 
 @Table({
-  tableName: "photo",
+  tableName: 'photo'
 })
-export class Photo extends Model<Photo> {
+export class Photo extends Model<Photo>{
   @PrimaryKey
   @AutoIncrement
-  @Comment("照片id")
+  @Comment('照片id')
   @Column
   pid: number;
 
-  @Length({ min: 1, max: 20, msg: "标题长度为1-20位字符!" })
-  @Comment("照片标题")
+  @Length({ min: 1, max: 20, msg: '标题长度为1-20位字符!' })
+  @Comment('照片标题')
   @Column(DataType.STRING)
   title: string;
 
-  @Comment("照片的描述")
-  @Length({ min: 1, max: 255, msg: "描述长度为1-255位字符!" })
+  @Comment('照片的描述')
+  @Length({ min: 1, max: 255, msg: '描述长度为1-255位字符!' })
   @Column(DataType.TEXT)
   content: string;
 
-  @Comment("照片列表")
+  @Comment('照片列表')
   @Column(DataType.JSON)
   photos: string;
 
   @ForeignKey(() => User)
-  @Comment("照片作者id")
+  @Comment('照片作者id')
   @Column
   publish_uid: number;
 
   @ForeignKey(() => User)
-  @Comment("审核人id")
+  @Comment('审核人id')
   @Column
   audit_uid: number;
 
-  @Comment("审核时间")
+  @Comment('审核时间')
   @AllowNull
   @Column(DataType.DATE)
   audit_time: Date;
 
-  @Comment("审核描述")
-  @Length({ msg: "审核描述长度为1-255", min: 1, max: 255 })
+  @Comment('审核描述')
+  @Length({ msg: '审核描述长度为1-255', min: 1, max: 255 })
+  @AllowNull
   @Column(DataType.STRING)
-  audit_desc: string;
+  audit_desc: string|null;
 
-  @Comment("审核状态，0未审核 1审核通过 2审核不通过")
+  @Comment('审核状态，0未审核 1审核通过 2审核不通过')
   @Default(0)
   @Column(DataType.TINYINT)
-  status: boolean;
+  status: AuditStatusList
 
   // 一个照片只能有一个作者,(声明publish_uid是外键)
-  @BelongsTo(() => User, "publish_uid")
-  author: User;
+  @BelongsTo(() => User, 'publish_uid')
+  author: User
 
   // 一个照片只能被一个管理员审核,(声明audit_uid是外键)
-  @BelongsTo(() => User, "audit_uid")
-  auditor: User;
+  @BelongsTo(() => User, 'audit_uid')
+  auditor: User
+
+  // 一个照片可以被多个用户喜欢
+  @BelongsToMany(()=>User,()=>UserLikePhoto,'pid')
+  liked:User[]
+}
+```
+
+##### UserLikePhoto
+
+​	用户点赞照片模型，多对多
+
+```ts
+import { ForeignKey, Table,Model } from "sequelize-typescript";
+import { User } from "../../user/model/user.model";
+import { Photo } from "./photo.model";
+
+@Table({
+  tableName:'user_like_photo'
+})
+export class UserLikePhoto extends Model<UserLikePhoto> {
+  @ForeignKey(() => User)
+  uid: number;
+  
+  @ForeignKey(() => Photo)
+  pid: number;
+
 }
 ```
 
 ##### User 更新与 Photo 的关系
 
 ```ts
-import {
-  Table,
-  Model,
-  Column,
-  PrimaryKey,
-  Comment,
-  DataType,
-  AutoIncrement,
-  Length,
-  Default,
-  HasMany,
-  BelongsTo,
-} from "sequelize-typescript";
+import { Table, Model, Column, PrimaryKey, Comment, DataType, AutoIncrement, Length, Default, HasMany, BelongsTo, BelongsToMany } from "sequelize-typescript";
 import { Role, Roles, roles } from "../../auth/role";
 import { Photo } from "../../photo/model/photo.model";
+import { UserLikePhoto } from "../../photo/model/user-like-photo.model";
 @Table({
-  tableName: "user",
+  tableName: 'user'
 })
-export class User extends Model<User> {
-  @Comment("账户id")
+export class User extends Model<User>{
+
+  @Comment('账户id')
   @PrimaryKey
   @AutoIncrement
   @Column
   uid: number;
 
-  @Comment("账户名称")
+  @Comment('账户名称')
   @Column(DataType.STRING)
   username: string;
 
-  @Comment("账户密码")
+  @Comment('账户密码')
   @Column(DataType.STRING)
   password: string;
 
   @Length({ max: 512 })
-  @Comment("账户头像")
+  @Comment('账户头像')
   @Column(DataType.STRING)
   avatar: string;
 
-  @Comment("用户角色")
+  @Comment('用户角色')
   @Column(DataType.ENUM(...roles))
   // @Default(Roles.User)
-  role: Role;
+  role: Role
 
   // 一个作者有多个照片 (这样设置后，publish_id会作为Photo表的外键，引用User表的uid，默认引用主键)
-  @HasMany(() => Photo, "publish_uid")
-  authorPhotos: Photo[];
+  @HasMany(() => Photo, 'publish_uid')
+  authorPhotos: Photo[]
 
   // 一个审核可以审核多个照片 (这样设置后，audit_uid会作为Photo表的外键，引用User表的uid，自定义指定引用User的uid字段)
   @HasMany(() => Photo, {
-    sourceKey: "uid",
-    foreignKey: "audit_uid",
+    sourceKey: 'uid',
+    foreignKey:'audit_uid'
   })
-  auditPhotos: Photo[];
+  auditPhotos: Photo[]
+
+  // 一个用户可以喜欢多个照片
+  @BelongsToMany(() => Photo, () => UserLikePhoto, 'uid')
+  likePhotos:Photo[]
+
 }
 ```
 
@@ -1773,31 +1963,61 @@ export const photoProvider: Provider[] = [
 
 ##### 发布照片
 
- 通过管道中间件解析和校验请求体数据，并通过 SetMeta 来设置路由元数据，该接口只能被 User 角色访问，再通过 AuthGuards 判断用户身份是否合法，通过 RoleGuards 来判断用户的角色是否可以访问该接口。在路由处理函数中判断下照片列表的类型和长度，最终调用 service 层创建照片
+ 通过管道中间件解析和校验请求体数据，并通过 SetMeta 来设置路由元数据，该接口只能被 User 角色访问，再通过 AuthGuards 判断用户身份是否合法，通过 RoleGuards 来判断用户的角色是否可以访问该接口。在路由处理函数中判断下照片列表的类型和长度，最终调用 service 层创建照片。
+
+​	对于照片列表字段，需要遍历文件列表，把文件名称中的图片大小解析出来，解析成一个对象 ，保存在数据库中，这样方便前端直接获取图片尺寸。
+
+```json
+{
+	"src":string,
+    "width":number,
+    "height":number
+}
+```
 
 ##### 审核照片
 
  用户发布的照片需要被审核才能被公开显示出来。通过 SetMetaData 来设置路由元数据，设置该接口可以被哪些角色访问（Admin、SuperAdmin），通过 AuthGuard 拦截并解析 token，通过 RoleGuard 来拦截非法的角色访问接口，通过管道解析 token、解析路径参数、解析校验请求体数据，最终调用 service 层。
 
-##### 浏览照片列表(中间件解析token)
+##### 浏览照片列表(中间件解析token ，写得太炸裂了，代码太耦合了)
 
 ​	根据角色和status来控制不同角色能够查看的内容是不一样的。若是角色User，则只能查看**自己全部状态的作品**和**他人已经审核通过的作品**，若是未登录用户则**只能查看他人已经审核通过的作品**，管理员和超级管理员可以**查看所有状态的作品。**若浏览的不是User角色的照片，提示未找到的信息，因为只有User才能发送照片。
 
+​	若status为undefined（访问该用户的所有照片），则只有超级管理员和管理员才能访问，若是User，必须是查看自己的照片才能访问。
+
+​	若调用该接口的是User角色且status=1，还需要查询当前每个照片被点赞的状态，以及点赞数量。
+
+##### 点赞照片
+
+​	参数装饰器解析路径参数pid，下发给服务层
+
+##### 取消点赞照片
+
+​	参数装饰器解析路径参数pid，下发给服务层
+
+##### 管理员获取照片列表
+
+​	管理员才能调用该接口，获取用户的照片列表，通过uid、status来指定获取某个用户、某个状态的照片列表。
+
+##### User获取照片列表
+
+​	User才能调用该接口，User自身可以查看自己所有状态照片，查看别人的照片只能查看审核通过的，未登录只能查看别人审核通过的照片
+
+##### User查看喜欢的照片
 
 
-​	
 
 #### 4.服务层
 
 ##### 创建照片
 
- 创建照片，直接插入记录，没啥逻辑。
+ 创建照片，直接插入记录
 
 ##### 审核照片
 
  审核照片前，需要检查当前照片是否被审核过了，未被审核则将当前审核信息记录在表中。
 
-##### 浏览用户发送的照片列表
+##### 浏览用户发送的照片列表（废弃）
 
 ​	该接口所有角色都能访问，不过不同角色可以访问的数据也是不同的。
 
@@ -1807,7 +2027,21 @@ export const photoProvider: Provider[] = [
 
 管理员以及超级管理员：查看所有人的照片
 
+##### 点赞照片
 
+​	点赞照片前先查询照片是否存在，用户是否已经点过赞了。
+
+##### 取消点赞照片
+
+​	取消点赞照片前先查询照片是否存在，用户是否点过赞了。
+
+##### 管理员获取照片列表
+
+​	根据起始偏移量、长度、查询条件获取数据，返回给控制层
+
+##### User和未登录用户获取照片
+
+​	若User访问自己的照片允许；User、游客只能访问别人审核通过的照片
 
 #### 5.模块
 

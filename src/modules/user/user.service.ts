@@ -48,6 +48,24 @@ export class UserService {
     return user
   }
   /**
+   * 获取用户信息，不包含密码和角色信息 （一定找到该用户）
+   * @param uid 用户id
+   */
+  async findUserWithoutPasswordAndRole(uid: number) {
+    const user = await this.userModel.findOne({
+      attributes: {
+        exclude: ['password','role']
+      },
+      where: {
+        uid
+      }
+    })
+    if (user === null) {
+      throw new NotFoundException('此id的用户不存在!')
+    }
+    return user
+  }
+  /**
    * 通过主键查找用户(不一定能找到该用户)
    * @param uid 用户id
    * @returns 

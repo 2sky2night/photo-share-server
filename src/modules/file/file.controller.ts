@@ -1,16 +1,19 @@
-import { Controller, ParseFilePipe, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
+import { Controller, ParseFilePipe, Post, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { FileUploadPhotoDto } from "./dto/file-upload-photo.dto";
 import crypto from 'crypto'
 import path from 'path'
 import fs from 'fs'
 import sizeOf from 'image-size'
+import { AuthGuard } from "../../common/guard";
 
 @Controller('file')
 export class FileController {
   /**
    * 上传单图片
    */
+  // 登录了才能上传图片!
+  @UseGuards(AuthGuard)
   @UseInterceptors(FileInterceptor('photo'))
   @Post('/upload/photo')
   async uploadPhoto(@UploadedFile(ParseFilePipe) fileUploadPhotoDto: FileUploadPhotoDto) {

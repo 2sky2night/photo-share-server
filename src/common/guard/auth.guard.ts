@@ -4,6 +4,7 @@ import { JwtService } from "@nestjs/jwt";
 import { JWT_SECRET } from "../../config";
 import { TokenData } from "../../types/token";
 import { User } from "../../modules/user/model/user.model";
+import tips from "../tips";
 
 export class AuthGuard implements CanActivate {
   private jwtService: JwtService
@@ -23,16 +24,15 @@ export class AuthGuard implements CanActivate {
       // @ts-ignore
       request.user = playload
       return true
-    } catch (error) {
-      console.log(error);
-      throw new UnauthorizedException('token不合法!')
+    } catch (error: any) {
+      throw new UnauthorizedException(error.toString ? error.toString() : tips.tokenError)
     }
   }
   // 查询用户是否存在
   async findUser(uid: number) {
     const user = await this.userModel.findByPk(uid)
     if (user === null) {
-      throw new UnauthorizedException('此id的用户不存在!')
+      throw new UnauthorizedException(tips.noExist('用户'))
     }
   }
   // 从请求头部获取token
@@ -40,14 +40,14 @@ export class AuthGuard implements CanActivate {
     const authorization = req.headers.authorization
     if (authorization === undefined) {
       // 未携带token
-      throw new UnauthorizedException('未携带token!')
+      throw new UnauthorizedException(tips.tokenEmpty)
     } else {
       const [type, token] = authorization.split(' ')
       if (type === 'Bearer') {
         return token
       } else {
         // 非jwt类型的token或其他字符串
-        throw new UnauthorizedException('token不合法!')
+        throw new UnauthorizedException(tips.tokenError)
       }
     }
   }

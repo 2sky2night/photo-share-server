@@ -1,6 +1,7 @@
-import { Table, Model, Column, PrimaryKey, AutoIncrement, Comment, DataType, Length, ForeignKey, BelongsTo, NotNull, AllowNull, Default } from "sequelize-typescript";
+import { Table, Model, Column, PrimaryKey, AutoIncrement, Comment, DataType, Length, ForeignKey, BelongsTo, NotNull, AllowNull, Default, BelongsToMany } from "sequelize-typescript";
 import { User } from "../../user/model/user.model";
 import { AuditStatusList } from "../../../types/photo";
+import { UserLikePhoto } from "./user-like-photo.model";
 
 @Table({
   tableName: 'photo'
@@ -45,7 +46,7 @@ export class Photo extends Model<Photo>{
   @Length({ msg: '审核描述长度为1-255', min: 1, max: 255 })
   @AllowNull
   @Column(DataType.STRING)
-  audit_desc: string|null;
+  audit_desc: string | null;
 
   @Comment('审核状态，0未审核 1审核通过 2审核不通过')
   @Default(0)
@@ -59,4 +60,14 @@ export class Photo extends Model<Photo>{
   // 一个照片只能被一个管理员审核,(声明audit_uid是外键)
   @BelongsTo(() => User, 'audit_uid')
   auditor: User
+
+  // 一个照片可以被多个用户喜欢
+  @BelongsToMany(() => User, () => UserLikePhoto, 'pid')
+  // 关联名称，sequelize会以likeds创建操作User的函数
+  likeds: User[]
+
+  /**
+   * 获取喜欢该照片的用户
+   */
+  declare getLikeds: () => Promise<User[]>
 }

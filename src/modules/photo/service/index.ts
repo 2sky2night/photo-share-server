@@ -1,0 +1,1 @@
+export { PhotoService } from './photo.service'
