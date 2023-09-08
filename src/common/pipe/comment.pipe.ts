@@ -5,9 +5,12 @@ import { UserCommentPhoto } from "../../modules/photo/model/user-comment-photo";
 /**
  * 评论管道，评论必须存在才能放行!
  */
-export class CommentPipe implements PipeTransform<string, Promise<number>>{
+export class CommentPipe implements PipeTransform<string | undefined, Promise<number>>{
   UCPModel = UserCommentPhoto
-  async transform(value: string): Promise<number> {
+  async transform(value: string | undefined): Promise<number> {
+    if (value === undefined) {
+      throw new BadRequestException(tips.paramsEmpty('cid'))
+    }
     const cid = +value
     if (isNaN(cid)) {
       throw new BadRequestException(tips.paramsError('cid'))

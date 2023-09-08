@@ -54,7 +54,7 @@ export class UserService {
   async findUserWithoutPasswordAndRole(uid: number) {
     const user = await this.userModel.findOne({
       attributes: {
-        exclude: ['password','role']
+        exclude: ['password', 'role']
       },
       where: {
         uid
@@ -139,5 +139,14 @@ export class UserService {
       role: user.role,
       avatar: user.avatar
     }
+  }
+  /**
+   * 获取账户列表
+   * @param limit 长度 
+   * @param offset 偏移量
+   * @returns 用户列表
+   */
+  async getAccountList(limit: number, offset: number) {
+    return await this.userModel.findAndCountAll({ limit, offset })
   }
 }

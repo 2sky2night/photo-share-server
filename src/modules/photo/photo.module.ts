@@ -29,6 +29,10 @@ export class PhotoModule implements NestModule {
       {
         path: '/photo/list/:uid',
         method: RequestMethod.GET
+      },
+      {
+        path: '/photo/comment/list',
+        method: RequestMethod.GET
       }
     )
   }

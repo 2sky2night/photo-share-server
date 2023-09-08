@@ -1,8 +1,8 @@
-import { Body, Controller, Delete, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards, UseInterceptors } from "@nestjs/common";
 import { AuthGuard, RoleGuard } from "../../../common/guard";
-import { Role, Token } from "../../../common/decorator";
+import { Role, Token, TokenOptional } from "../../../common/decorator";
 import { Roles } from "../../auth/role";
-import { CommentPipe, PhotoPassPipe, ValidationPipe } from "../../../common/pipe";
+import { CommentPipe, LimitPipe, OffsetPipe, PhotoPassPipe, ValidationPipe } from "../../../common/pipe";
 import { CommentCreateDto } from "../dto/comment-create.dto";
 import { UserCommentPhotoService } from "../service/user-comment-photo.service";
 
@@ -46,5 +46,15 @@ export class UserCommentPhotoController {
   ) {
     await this.UCPService.removeLike(uid, cid)
     return null
+  }
+  // 获取评论列表
+  @Get('list')
+  async getComments(
+    @TokenOptional('sub') uid: number | undefined,
+    @Query('pid', PhotoPassPipe) pid: number,
+    @Query('limit', LimitPipe) limit: number,
+    @Query('offset', OffsetPipe) offset: number
+  ) {
+    return await this.UCPService.getComments(pid,offset,limit,uid)
   }
 }

@@ -62,4 +62,20 @@ export class AuthService {
   async registerAdmin(authRegiterAdminDto: AuthRegiterAdminDto) {
     return await this.userService.createUser(authRegiterAdminDto, Roles.Admin)
   }
+  /**
+   * 获取账户列表
+   * @param limit 长度 
+   * @param offset 偏移量
+   * @returns 
+   */
+  async getAccountList(limit: number, offset: number) {
+    const { rows: list, count: total } = await this.userService.getAccountList(limit, offset)
+    return {
+      list,
+      total,
+      limit,
+      offset,
+      has_more: total > limit * offset + limit
+    }
+  }
 }

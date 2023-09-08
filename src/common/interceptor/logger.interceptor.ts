@@ -22,7 +22,7 @@ export class AppLogger implements NestInterceptor {
           request.method,
           request.url,
           Date.now() - start,
-          error
+          JSON.stringify(error)
         ));
         return throwError(error)
       }),

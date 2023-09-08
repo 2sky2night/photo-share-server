@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Put, Param, ParseIntPipe, Post, Req, UseGuards } from "@nestjs/common";
-import { ValidationPipe } from "../../common/pipe";
+import { Body, Controller, Get, Put, Param, ParseIntPipe, Post, Req, UseGuards, Query } from "@nestjs/common";
+import { LimitPipe, OffsetPipe, ValidationPipe } from "../../common/pipe";
 import { AuthRegisterDto } from "./dto/auth-register.dto";
 import { AuthService } from "./auth.service";
 import { AuthLoginDto } from "./dto/auth-login.dto";
@@ -56,5 +56,15 @@ export class AuthController {
   ) {
     await this.authService.registerAdmin(authRegiterAdminDto)
     return null
+  }
+  // 超级管理员获取账户列表
+  @Role(Roles.SuperAdmin)
+  @UseGuards(AuthGuard, RoleGuard)
+  @Get('account/list')
+  async getAccountList(
+    @Query('limit', LimitPipe) limit: number,
+    @Query('offset', OffsetPipe) offset: number
+  ) {
+    return await this.authService.getAccountList(limit, offset)
   }
 }

@@ -5,12 +5,15 @@ import tips from "../tips";
 /**
  * 照片存在管道
  */
-export class PhotoPipe implements PipeTransform<string, Promise<number>> {
+export class PhotoPipe implements PipeTransform<string | undefined, Promise<number>> {
   private photoModel: typeof Photo
   constructor() {
     this.photoModel = Photo
   }
-  async transform(pid: string) {
+  async transform(pid: string | undefined) {
+    if (pid === undefined) {
+      throw new BadRequestException(tips.paramsEmpty('pid'))
+    }
     // value为传入的值,该函数返回啥则被修饰的参数就会是什么
     // 解析pid
     const _pid = +pid

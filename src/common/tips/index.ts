@@ -6,6 +6,10 @@ export default {
   roleError: '此用户角色不支持访问该接口!',
   photoIsNotAudit: '此照片未经过审核!',
   /**
+   * @example `参数${name}缺失!`
+   */
+  paramsEmpty: (name: string) => `参数${name}缺失!`,
+  /**
    * @example 还未点赞过该${name}！
    */
   removeLikeError: (name: string) => `还未点赞过该${name}!`,
