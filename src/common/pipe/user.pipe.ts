@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException, PipeTransform } from "@nestjs/common";
+import { BadRequestException, PipeTransform } from "@nestjs/common";
 import { User } from "../../modules/user/model/user.model";
 import tips from "../tips";
 import { Roles } from "../../modules/auth/role";
@@ -22,10 +22,10 @@ export class UserPipe implements PipeTransform<string, Promise<number>>{
   async getUser(uid: number) {
     const user = await this.userModel.findByPk(uid)
     if (user === null) {
-      throw new NotFoundException(tips.noExist('用户'))
+      throw new BadRequestException(tips.requestError)
     }
     if (user.role !== Roles.User) {
-      throw new NotFoundException(tips.noExist('用户'))
+      throw new BadRequestException(tips.requestError)
     }
   }
 }

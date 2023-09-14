@@ -5,6 +5,10 @@ export default {
   auditError: '审核状态不合法!',
   roleError: '此用户角色不支持访问该接口!',
   photoIsNotAudit: '此照片未经过审核!',
+  requestError: '请求非法!',
+  usernameIsExist: '用户名重复!',
+  usernameNoExist: '用户名不存在!',
+  loginError:'用户名或密码错误!',
   /**
    * @example `参数${name}缺失!`
    */
@@ -17,7 +21,16 @@ export default {
    * @example 已经点赞过该${name}了!
    */
   likeError: (name: string) => `已经点赞过该${name}了!`,
+  /**
+   * @example 此id的${name}不存在!
+   */
   noExist: (name: string) => `此id的${name}不存在`,
+  /**
+   * @example 参数${name}不合法
+   */
   paramsError: (name: string) => `参数${name}不合法!`,
+  /**
+   * @example 未找到该${name}
+   */
   notFound: (name: string) => `未找到该${name}!`
 }

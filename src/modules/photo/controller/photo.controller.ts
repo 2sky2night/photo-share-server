@@ -1,5 +1,5 @@
 import { Controller, Post, Body, UseGuards, BadRequestException, Param, ParseIntPipe, Get, Query, Req, Optional, UseInterceptors } from "@nestjs/common";
-import { LimitPipe, OffsetPipe, IntOptionalPipe, UserOptionalPipe, ValidationPipe, PhotoPipe } from "../../../common/pipe";
+import { LimitPipe, OffsetPipe, IntOptionalPipe, UserOptionalPipe, ValidationPipe, PhotoPipe, DescPipe } from "../../../common/pipe";
 import { PhotoCreateDto } from "../dto/photo-create.dto";
 import { AuthGuard, RoleGuard } from "../../../common/guard";
 import { Roles } from "../../auth/role";
@@ -71,7 +71,7 @@ export class PhotoController {
     @Token('sub') uid: number,
     @Body(new ValidationPipe()) photoAuditDto: PhotoAuditDto) {
     await this.photoService.auditPhoto(pid, uid, photoAuditDto)
-    return '审核成功!'
+    return null
   }
   /**
    * 获取用户的照片列表
@@ -118,6 +118,15 @@ export class PhotoController {
   ) {
     return await this.photoService.adminFindPhotos(uid, status, offset, limit)
   }
+  /**
+   * 用户获取照片
+   * @param currentUid 
+   * @param uid 
+   * @param status 
+   * @param offset 
+   * @param limit 
+   * @returns 
+   */
   @UseInterceptors(UserInterceptor)
   @Get('user/list')
   async userFindPhotos(
@@ -126,8 +135,9 @@ export class PhotoController {
     @Query('status', StatusPipe) status: AuditStatus | undefined,
     @Query('offset', OffsetPipe) offset: number,
     @Query('limit', LimitPipe) limit: number,
+    @Query('desc', DescPipe) desc: boolean
   ) {
-    return await this.photoService.userFindPhotos(uid, status, offset, limit, currentUid)
+    return await this.photoService.userFindPhotos(uid, status, offset, limit, currentUid, desc)
   }
   /**
    * 上报照片浏览量
@@ -136,9 +146,27 @@ export class PhotoController {
    */
   @Post('view/:pid')
   async viewPhoto(
-    @Param('pid',PhotoPipe) pid:number
+    @Param('pid', PhotoPipe) pid: number
   ) {
     await this.photoService.viewPhoto(pid)
     return null
+  }
+  // 随机获取审核通过的照片的图片
+  @Get('random/pic')
+  async randomImgList(
+    @Query('limit', LimitPipe) limit: number
+  ) {
+    return await this.photoService.randomImgList(limit)
+  }
+  // 获取某个照片
+  // 管理员随意读取
+  // 用户非作者只能读取审核通过的
+  // 用户作者可以随意读取
+  @Get(':pid')
+  async getPhoto(
+    @Param('pid', PhotoPipe) pid: number,
+    @TokenOptional('sub') uid: number,
+  ) {
+    return await this.photoService.getPhoto(pid, uid)
   }
 }

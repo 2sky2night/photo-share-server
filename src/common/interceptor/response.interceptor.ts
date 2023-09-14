@@ -1,5 +1,6 @@
 // common/interceptor/response.interceptor.ts
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from "@nestjs/common";
+import { Response } from "express";
 import { Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
 @Injectable()
@@ -9,6 +10,8 @@ export class ResponseInterceptor implements NestInterceptor {
     // map可以格式化响应结果
     // return 关键字可以将结果返回给客户端
     return next.handle().pipe(map(data => {
+      const response = _context.switchToHttp().getResponse<Response>()
+      response.status(200)
       return {
         data,
         code: 200,

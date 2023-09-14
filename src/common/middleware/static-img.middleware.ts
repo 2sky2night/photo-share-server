@@ -43,6 +43,8 @@ export async function StaticImgMiddleware(req: Request, res: Response, next: any
 
         res.send(fileData)
       } else {
+        console.log(filePath);
+        
         throw new NotFoundException('静态资源不存在!')
       }
 

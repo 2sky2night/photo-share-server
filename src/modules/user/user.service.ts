@@ -2,10 +2,11 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from "@nes
 import { User } from "./model/user.model";
 import { encrpty } from "../../common/crypto";
 import { PASSWORD_SECRET } from "../../config";
-import { Role } from "../auth/role";
+import { Role, Roles } from "../auth/role";
 import { UserCreateDto } from "./dto/user-create.dto";
 import { UserUpdateDto } from "./dto/user-update.dto";
 import { Op } from "sequelize";
+import tips from "../../common/tips";
 
 @Injectable()
 export class UserService {
@@ -22,7 +23,7 @@ export class UserService {
     const user = await this.findUserByusername(username)
     if (user !== null) {
       // 用户存在了
-      throw new BadRequestException('用户名已经存在了!')
+      throw new BadRequestException(tips.usernameIsExist)
     } else {
       // 注册用户
       // 加密密码
@@ -38,16 +39,6 @@ export class UserService {
     }
   }
   /**
-   * 通过主键查找到该用户(必定找到该用户)
-   */
-  async findUser(uid: number) {
-    const user = await this.find(uid)
-    if (user === null) {
-      throw new NotFoundException('此id的用户不存在!')
-    }
-    return user
-  }
-  /**
    * 获取用户信息，不包含密码和角色信息 （一定找到该用户）
    * @param uid 用户id
    */
@@ -61,7 +52,7 @@ export class UserService {
       }
     })
     if (user === null) {
-      throw new NotFoundException('此id的用户不存在!')
+      throw new NotFoundException(tips.notFound('用户'))
     }
     return user
   }
@@ -106,7 +97,7 @@ export class UserService {
     })
     if (userOther) {
       // 用户名重复
-      throw new BadRequestException('用户名已经存在了!')
+      throw new BadRequestException(tips.usernameIsExist)
     }
     // 修改用户信息
     user.username = username
@@ -129,16 +120,29 @@ export class UserService {
     return true
   }
   /**
+   * 获取用户信息 必定找到该用户
+   * @param uid 用户id
+   * @param exclude 哪些属性需要过滤掉
+   * @returns 
+   */
+  async findUser(uid: number, exclude?: (keyof User)[]) {
+    const user = await this.userModel.findOne({
+      where: { uid },
+      attributes: {
+        exclude: exclude ? exclude : []
+      }
+    })
+    if (user === null) {
+      throw new NotFoundException(tips.noExist('用户'))
+    }
+    return user
+  }
+  /**
  *  获取用户信息
  */
   async info(uid: number) {
-    const user = await this.findUser(uid)
-    // 中间件已经检查过uid的存在性质了,不需要再写分支了
-    return {
-      username: user.username,
-      role: user.role,
-      avatar: user.avatar
-    }
+    const user = await this.findUser(uid, ['password'])
+    return user
   }
   /**
    * 获取账户列表
@@ -148,5 +152,13 @@ export class UserService {
    */
   async getAccountList(limit: number, offset: number) {
     return await this.userModel.findAndCountAll({ limit, offset })
+  }
+  /**
+   * 获取user基本信息，只要角色为user的 User管道必须要拦截非User角色的访问
+   * @param uid 
+   */
+  async getUser(uid: number) {
+    const user = await this.findUserWithoutPasswordAndRole(uid)
+    return user
   }
 }

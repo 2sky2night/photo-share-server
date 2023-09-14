@@ -41,7 +41,11 @@ export class FileController {
     // 读取该图片的尺寸大小
     const { height, width } = sizeOf(fileUploadPhotoDto.buffer)
     // 生成新文件名称
-    const newName = `${crypto.randomUUID({ disableEntropyCache: true })}_w${width}_h${height}_${fileUploadPhotoDto.originalname}`
+    let newName = `${crypto.randomUUID({ disableEntropyCache: true })}_w${width}_h${height}_${fileUploadPhotoDto.originalname}`
+    // 清空文件名称的空格
+    while (newName.includes(' ')) {
+      newName = newName.replace(' ', '_')
+    }
     // 新文件路径
     const filePath = path.resolve(imgPath, `./${newName}`)
     // 保存文件

@@ -8,6 +8,7 @@ import { PASSWORD_SECRET } from "../../config";
 import { JwtService } from "@nestjs/jwt";
 import { AuthUpdateDto } from "./dto/auth-update.dto";
 import { AuthRegiterAdminDto } from "./dto/auth-register-admin.dto";
+import tips from "../../common/tips";
 
 @Injectable()
 export class AuthService {
@@ -31,7 +32,7 @@ export class AuthService {
     const user = await this.userService.findUserByusername(username)
     if (user === null) {
       // 用户不存在
-      throw new NotFoundException('用户名不存在!')
+      throw new NotFoundException(tips.usernameNoExist)
     }
     // 密码是否匹配
     const _dePassword = decrpty(user.password, PASSWORD_SECRET)
@@ -43,7 +44,7 @@ export class AuthService {
         })
       }
     } else {
-      throw new BadRequestException('用户名或密码错误!')
+      throw new BadRequestException(tips.loginError)
     }
   }
   /**
@@ -75,7 +76,7 @@ export class AuthService {
       total,
       limit,
       offset,
-      has_more: total > limit * offset + limit
+      has_more: total > offset + limit
     }
   }
 }

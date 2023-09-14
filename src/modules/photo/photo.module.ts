@@ -33,6 +33,10 @@ export class PhotoModule implements NestModule {
       {
         path: '/photo/comment/list',
         method: RequestMethod.GET
+      },
+      {
+        path: '/photo/:pid',
+        method: RequestMethod.GET
       }
     )
   }

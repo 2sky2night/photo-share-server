@@ -84,7 +84,7 @@ export class UserCommentPhotoService {
       total,
       limit,
       offset,
-      has_more: total > limit * offset + limit
+      has_more: total > offset + limit
     }
   }
   /**
