@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards, UseInterc
 import { AuthGuard, RoleGuard } from "../../../common/guard";
 import { Role, Token, TokenOptional } from "../../../common/decorator";
 import { Roles } from "../../auth/role";
-import { CommentPipe, LimitPipe, OffsetPipe, PhotoPassPipe, ValidationPipe } from "../../../common/pipe";
+import { CommentPipe, DescPipe, LimitPipe, OffsetPipe, PhotoPassPipe, ValidationPipe } from "../../../common/pipe";
 import { CommentCreateDto } from "../dto/comment-create.dto";
 import { UserCommentPhotoService } from "../service/user-comment-photo.service";
 
@@ -53,8 +53,9 @@ export class UserCommentPhotoController {
     @TokenOptional('sub') uid: number | undefined,
     @Query('pid', PhotoPassPipe) pid: number,
     @Query('limit', LimitPipe) limit: number,
-    @Query('offset', OffsetPipe) offset: number
+    @Query('offset', OffsetPipe) offset: number,
+    @Query('desc', DescPipe) desc: boolean
   ) {
-    return await this.UCPService.getComments(pid,offset,limit,uid)
+    return await this.UCPService.getComments(pid, offset, limit, uid, desc)
   }
 }

@@ -9,13 +9,15 @@ import { removeUndefined } from "../../../utils/tools";
 import tips from "../../../common/tips";
 import { Op } from "sequelize";
 import sequelize from "sequelize";
+import { UserCommentPhoto } from "../model/user-comment-photo";
 
 @Injectable()
 export class PhotoService {
   constructor(
     private userService: UserService,
     @Inject('PhotoModel') private photoModel: typeof Photo,
-    @Inject('UserLikePhotoModel') private userLikePhotoModel: typeof UserLikePhoto
+    @Inject('UserLikePhotoModel') private userLikePhotoModel: typeof UserLikePhoto,
+    @Inject('UserCommentPhotoModel') private userCommentPhotoModel: typeof UserCommentPhoto
   ) { }
   /**
    * 发布照片
@@ -254,11 +256,14 @@ export class PhotoService {
     // 当前用户是否喜欢此照片?
     const is_liked = await this.findUserLikePhoto(photo.pid, uid)
     const data = this.formatPhoto(photo)
+    // 获取评论的数量
+    const comment_count = await this.getPhotoCommentCount(photo.pid)
     return {
       ...data,
       user,
       like_count,
-      is_liked
+      is_liked,
+      comment_count
     }
   }
   /**
@@ -403,6 +408,13 @@ export class PhotoService {
     }
   }
   /**
+   * 获取照片的评论数量
+   * @param pid 已经审核通过的照片
+   */
+  async getPhotoCommentCount(pid: number) {
+    return (await this.userCommentPhotoModel.findAll({ where: { pid } })).length
+  }
+  /**
    * 格式化照片的photos字段，返回处理后的照片项
    * @param photo
    */
@@ -419,6 +431,7 @@ export class PhotoService {
       status: photo.status,
       createdAt: photo.createdAt,
       updatedAt: photo.updatedAt,
+      views: photo.views
     }
   }
   /**
