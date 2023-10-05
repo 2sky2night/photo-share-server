@@ -1,5 +1,28 @@
-import { Controller, Post, Body, UseGuards, BadRequestException, Param, ParseIntPipe, Get, Query, Req, Optional, UseInterceptors } from "@nestjs/common";
-import { LimitPipe, OffsetPipe, IntOptionalPipe, UserOptionalPipe, ValidationPipe, PhotoPipe, DescPipe } from "../../../common/pipe";
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  BadRequestException,
+  Param,
+  ParseIntPipe,
+  Get,
+  Query,
+  Req,
+  UseInterceptors,
+  Res,
+} from "@nestjs/common";
+import type { Response as ResType } from "express";
+import { Response } from "../../../common/response";
+import {
+  LimitPipe,
+  OffsetPipe,
+  IntOptionalPipe,
+  UserOptionalPipe,
+  ValidationPipe,
+  PhotoPipe,
+  DescPipe,
+} from "../../../common/pipe";
 import { PhotoCreateDto } from "../dto/photo-create.dto";
 import { AuthGuard, RoleGuard } from "../../../common/guard";
 import { Roles } from "../../auth/role";
@@ -12,70 +35,72 @@ import { TokenData } from "../../../types/token";
 import { Request } from "express";
 import { UserInterceptor } from "../../../common/interceptor";
 
-@Controller('photo')
+@Controller("photo")
 export class PhotoController {
-  constructor(
-    private photoService: PhotoService
-  ) { }
+  constructor(private photoService: PhotoService) {}
   /**
    * 发布照片
-   * @param uid 发布照片的id 
+   * @param uid 发布照片的id
    * @param photoCreateDto 请求体
    */
   @Role(Roles.User)
   @UseGuards(AuthGuard, RoleGuard)
-  @Post('create')
-  async createPhoto(@Token('sub') uid: number, @Body(new ValidationPipe()) photoCreateDto: PhotoCreateDto) {
-    const { photos } = photoCreateDto
-    if (photos.some(url => typeof url !== 'string')) {
-      throw new BadRequestException('照片项的url必须是一个字符串!')
+  @Post("create")
+  async createPhoto(
+    @Token("sub") uid: number,
+    @Body(new ValidationPipe()) photoCreateDto: PhotoCreateDto
+  ) {
+    const { photos } = photoCreateDto;
+    if (photos.some((url) => typeof url !== "string")) {
+      throw new BadRequestException("照片项的url必须是一个字符串!");
     }
     if (photos.length > 10) {
-      throw new BadRequestException('每次最多分享10张照片!')
+      throw new BadRequestException("每次最多分享10张照片!");
     }
     // 解析photot字段，将图片尺寸解析出来，这样前端方便读取图片尺寸
-    const photosForm = photoCreateDto.photos.map(url => {
-      const [_hash, w, h] = url.split('_')
+    const photosForm = photoCreateDto.photos.map((url) => {
+      const [_hash, w, h] = url.split("_");
       if (w === undefined || h === undefined) {
-        throw new BadRequestException('图片链接不合法!')
+        throw new BadRequestException("图片链接不合法!");
       }
-      const width = +(w.substring(1))
-      const height = +(h.substring(1))
+      const width = +w.substring(1);
+      const height = +h.substring(1);
       if (isNaN(width) || isNaN(height)) {
-        throw new BadRequestException('图片链接不合法!')
+        throw new BadRequestException("图片链接不合法!");
       }
       return {
         width,
         height,
         url,
-      }
-    })
+      };
+    });
 
     return await this.photoService.create(uid, {
       title: photoCreateDto.title,
       content: photoCreateDto.content,
-      photos: photosForm
-    })
+      photos: photosForm,
+    });
   }
   /**
    * 审核照片
-   * @param pid 照片id 
+   * @param pid 照片id
    * @param uid 审核员id
-   * @param photoAuditDto 审核状态 
+   * @param photoAuditDto 审核状态
    */
   @Role(Roles.Admin, Roles.SuperAdmin)
   @UseGuards(AuthGuard, RoleGuard)
-  @Post('audit/:pid')
+  @Post("audit/:pid")
   async auditPhoto(
-    @Param('pid', ParseIntPipe) pid: number,
-    @Token('sub') uid: number,
-    @Body(new ValidationPipe()) photoAuditDto: PhotoAuditDto) {
-    await this.photoService.auditPhoto(pid, uid, photoAuditDto)
-    return null
+    @Param("pid", ParseIntPipe) pid: number,
+    @Token("sub") uid: number,
+    @Body(new ValidationPipe()) photoAuditDto: PhotoAuditDto
+  ) {
+    await this.photoService.auditPhoto(pid, uid, photoAuditDto);
+    return null;
   }
   /**
    * 获取用户的照片列表
-   * 
+   *
    * 1.status:未通过2和未审核0只有admin、superadmin和作者本身才能调用
    * 2.若调用接口的用户为User
    *    若查看自己的作品则全部状态的都可以看
@@ -85,19 +110,25 @@ export class PhotoController {
    * @param offset 偏移量
    * @param limit 获取多少数据
    * @param status 审核状态
-   * @returns 
+   * @returns
    */
-  @Get('list/:uid')
+  @Get("list/:uid")
   async getUserPhotos(
     @Req() requset: Request,
-    @Param('uid', ParseIntPipe) uid: number,
-    @Query('offset', OffsetPipe) offset: number,
-    @Query('limit', LimitPipe) limit: number,
-    @Query('status', StatusPipe) status: AuditStatus | undefined
+    @Param("uid", ParseIntPipe) uid: number,
+    @Query("offset", OffsetPipe) offset: number,
+    @Query("limit", LimitPipe) limit: number,
+    @Query("status", StatusPipe) status: AuditStatus | undefined
   ) {
     // @ts-ignore
-    const token = requset.user as TokenData
-    return this.photoService.findAuthorPhotos(uid, offset, limit, status, token === undefined ? undefined : token.sub)
+    const token = requset.user as TokenData;
+    return this.photoService.findAuthorPhotos(
+      uid,
+      offset,
+      limit,
+      status,
+      token === undefined ? undefined : token.sub
+    );
   }
   /**
    * 管理员获取照片
@@ -105,68 +136,78 @@ export class PhotoController {
    * @param offset 偏移量
    * @param limit 总数
    * @param status 状态
-   * @returns 
+   * @returns
    */
   @Role(Roles.Admin, Roles.SuperAdmin)
   @UseGuards(AuthGuard, RoleGuard)
-  @Get('admin/list')
+  @Get("admin/list")
   async adminFindPhotos(
-    @Query('uid', IntOptionalPipe, UserOptionalPipe) uid: number | undefined,
-    @Query('offset', OffsetPipe) offset: number,
-    @Query('limit', LimitPipe) limit: number,
-    @Query('status', StatusPipe) status: AuditStatus | undefined
+    @Query("uid", IntOptionalPipe, UserOptionalPipe) uid: number | undefined,
+    @Query("offset", OffsetPipe) offset: number,
+    @Query("limit", LimitPipe) limit: number,
+    @Query("status", StatusPipe) status: AuditStatus | undefined
   ) {
-    return await this.photoService.adminFindPhotos(uid, status, offset, limit)
+    return await this.photoService.adminFindPhotos(uid, status, offset, limit);
   }
   /**
    * 用户获取照片
-   * @param currentUid 
-   * @param uid 
-   * @param status 
-   * @param offset 
-   * @param limit 
-   * @returns 
+   * @param currentUid
+   * @param uid
+   * @param status
+   * @param offset
+   * @param limit
+   * @returns
    */
   @UseInterceptors(UserInterceptor)
-  @Get('user/list')
+  @Get("user/list")
   async userFindPhotos(
-    @TokenOptional('sub') currentUid: number | undefined,
-    @Query('uid', IntOptionalPipe, UserOptionalPipe) uid: number | undefined,
-    @Query('status', StatusPipe) status: AuditStatus | undefined,
-    @Query('offset', OffsetPipe) offset: number,
-    @Query('limit', LimitPipe) limit: number,
-    @Query('desc', DescPipe) desc: boolean
+    @TokenOptional("sub") currentUid: number | undefined,
+    @Query("uid", IntOptionalPipe, UserOptionalPipe) uid: number | undefined,
+    @Query("status", StatusPipe) status: AuditStatus | undefined,
+    @Query("offset", OffsetPipe) offset: number,
+    @Query("limit", LimitPipe) limit: number,
+    @Query("desc", DescPipe) desc: boolean
   ) {
-    return await this.photoService.userFindPhotos(uid, status, offset, limit, currentUid, desc)
+    return await this.photoService.userFindPhotos(
+      uid,
+      status,
+      offset,
+      limit,
+      currentUid,
+      desc
+    );
   }
   /**
    * 上报照片浏览量
-   * @param pid 
-   * @returns 
+   * @param pid
+   * @returns
    */
-  @Post('view/:pid')
-  async viewPhoto(
-    @Param('pid', PhotoPipe) pid: number
-  ) {
-    await this.photoService.viewPhoto(pid)
-    return null
+  @Post("view/:pid")
+  async viewPhoto(@Param("pid", PhotoPipe) pid: number) {
+    await this.photoService.viewPhoto(pid);
+    return null;
   }
   // 随机获取审核通过的照片的图片
-  @Get('random/pic')
+  @Get("random/pic")
   async randomImgList(
-    @Query('limit', LimitPipe) limit: number
+    @Query("limit", LimitPipe) limit: number,
+    @Res() res: ResType
   ) {
-    return await this.photoService.randomImgList(limit)
+    // 由于图片数量多，走缓存，缓存一天
+    res.header("Cache-Control", "max-age=86400");
+    const data = await this.photoService.randomImgList(limit);
+    const response = new Response(data);
+    res.send(response);
   }
   // 获取某个照片
   // 管理员随意读取
   // 用户非作者只能读取审核通过的
   // 用户作者可以随意读取
-  @Get(':pid')
+  @Get(":pid")
   async getPhoto(
-    @Param('pid', PhotoPipe) pid: number,
-    @TokenOptional('sub') uid: number,
+    @Param("pid", PhotoPipe) pid: number,
+    @TokenOptional("sub") uid: number
   ) {
-    return await this.photoService.getPhoto(pid, uid)
+    return await this.photoService.getPhoto(pid, uid);
   }
 }

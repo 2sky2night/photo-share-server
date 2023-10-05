@@ -38,7 +38,7 @@ export class AuthController {
   @Put('update/:uid')
   async updateUser(@Param('uid', ParseIntPipe) uid: number, @Body(new ValidationPipe()) authUpdateDto: AuthUpdateDto) {
     await this.authService.updateUser(uid, authUpdateDto)
-    return '更新用户信息成功!'
+    return null
   }
   // 解析token
   @UseGuards(AuthGuard)

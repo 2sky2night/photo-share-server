@@ -11,6 +11,8 @@ export default {
   loginError: "用户名或密码错误!",
   staticFileNotFound: "静态资源不存在!",
   staticFileError: "读取静态资源出错!",
+  oldPasswordError: "当前密码错误!",
+  pleaseUploadImg:'请上传图片!',
   /**
    * @example `参数${name}缺失!`
    */

@@ -25,7 +25,7 @@ export function StaticImgMiddleware(req: Request, res: Response, next: any) {
       // 因为发送请求时会自动把url中某些字符转码，导致中文字符被转码，不能读取到对应的文件
       const staticPath = decodeURI(req.path.substring(7));
       // 拼接路径
-      const filePath = path.resolve("./src/static", `.${staticPath}`);
+      const filePath = path.resolve("./src/static", `./${staticPath}`);
       // 若文件存在
       if (fs.existsSync(filePath)) {
         // 每次读取100kb的数据
@@ -48,7 +48,7 @@ export function StaticImgMiddleware(req: Request, res: Response, next: any) {
         // 设置强缓存 12小时
         res.setHeader("cache-control", "max-age=43200");
       } else {
-        console.log(filePath);
+        console.log(`Error:Can not found path:${filePath}`);
         throw new NotFoundException(tips.staticFileNotFound);
       }
     }

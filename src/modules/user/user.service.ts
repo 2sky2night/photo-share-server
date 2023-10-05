@@ -1,41 +1,47 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { User } from "./model/user.model";
-import { encrpty } from "../../common/crypto";
+import { decrpty, encrpty } from "../../common/crypto";
 import { PASSWORD_SECRET } from "../../config";
 import { Role, Roles } from "../auth/role";
 import { UserCreateDto } from "./dto/user-create.dto";
 import { UserUpdateDto } from "./dto/user-update.dto";
 import { Op } from "sequelize";
 import tips from "../../common/tips";
+import { UserUpdatePasswordDto } from "./dto/user-update-password.dto";
 
 @Injectable()
 export class UserService {
   constructor(
     // 注入user模型
-    @Inject('UserModel') private userModel: typeof User
-  ) { }
+    @Inject("UserModel") private userModel: typeof User
+  ) {}
   /**
    * 创建用户
    * @param authRegisterDto 创建用户的数据
    */
   async createUser({ username, password }: UserCreateDto, role: Role) {
     // 查询用户名是否重复
-    const user = await this.findUserByusername(username)
+    const user = await this.findUserByusername(username);
     if (user !== null) {
       // 用户存在了
-      throw new BadRequestException(tips.usernameIsExist)
+      throw new BadRequestException(tips.usernameIsExist);
     } else {
       // 注册用户
       // 加密密码
-      const _password = encrpty(password, PASSWORD_SECRET)
+      const _password = encrpty(password, PASSWORD_SECRET);
       // 保存用户记录
       // @ts-ignore
       const user = await this.userModel.create({
         password: _password,
         username,
-        role
-      })
-      return user
+        role,
+      });
+      return user;
     }
   }
   /**
@@ -45,65 +51,70 @@ export class UserService {
   async findUserWithoutPasswordAndRole(uid: number) {
     const user = await this.userModel.findOne({
       attributes: {
-        exclude: ['password', 'role']
+        exclude: ["password", "role"],
       },
       where: {
-        uid
-      }
-    })
+        uid,
+      },
+    });
     if (user === null) {
-      throw new NotFoundException(tips.notFound('用户'))
+      throw new NotFoundException(tips.notFound("用户"));
     }
-    return user
+    return user;
   }
   /**
    * 通过主键查找用户(不一定能找到该用户)
    * @param uid 用户id
-   * @returns 
+   * @returns
    */
   async find(uid: number) {
-    return this.userModel.findByPk(uid)
+    return this.userModel.findByPk(uid);
   }
   /**
    * 根据用户名称查找用户
    * @param username 用户名称
-   * @returns 
+   * @returns
    */
   async findUserByusername(username: string) {
     const user = await this.userModel.findOne({
       where: {
-        username
-      }
-    })
-    return user
+        username,
+      },
+    });
+    return user;
   }
   /**
    * 更新用户基本信息
    * @param uid 用户id
-   * @param userUpdateDto 用户数据 
+   * @param userUpdateDto 用户数据
    */
   async updateUser(uid: number, { username, avatar }: UserUpdateDto) {
     // 查询id是否存在
-    const user = await this.findUser(uid)
-    // 用户存在,查询除了该用户以外是否还有其他同名用户
-    const userOther = await this.userModel.findOne({
-      where: {
-        username,
-        // 查询非更改用户以外的用户是否有同名的
-        uid: {
-          [Op.not]: uid
-        }
-      }
-    })
-    if (userOther) {
-      // 用户名重复
-      throw new BadRequestException(tips.usernameIsExist)
-    }
+    const user = await this.findUser(uid);
     // 修改用户信息
-    user.username = username
-    user.avatar = avatar
-    await user.save()
-    return true
+    if (username) {
+      // 查询除了该用户以外是否还有其他同名用户
+      const userOther = await this.userModel.findOne({
+        where: {
+          username,
+          // 查询非更改用户以外的用户是否有同名的
+          uid: {
+            [Op.not]: uid,
+          },
+        },
+      });
+      if (userOther) {
+        // 用户名重复
+        throw new BadRequestException(tips.usernameIsExist);
+      }
+      user.username = username;
+    }
+    if (avatar) user.avatar = avatar;
+    await user.save();
+    return {
+      username,
+      avatar,
+    };
   }
   /**
    * 更新用户密码
@@ -112,53 +123,75 @@ export class UserService {
    */
   async updateUserPassword(uid: number, password: string) {
     // 用户是否存在
-    const user = await this.findUser(uid)
+    const user = await this.findUser(uid);
     // 加密密码
-    const _password = encrpty(password, PASSWORD_SECRET)
-    user.password = _password
-    await user.save()
-    return true
+    const _password = encrpty(password, PASSWORD_SECRET);
+    user.password = _password;
+    await user.save();
+  }
+  /**
+   * 更新用户密码（校验旧密码是否正确?）
+   * @param uid
+   * @param userUpdatePasswordDto
+   */
+  async toUpdateUserPassword(
+    uid: number,
+    { password, oldPassword }: UserUpdatePasswordDto
+  ) {
+    // 用户是否存在
+    const user = await this.findUser(uid);
+    // 解密密码
+    const _password = decrpty(user.password, PASSWORD_SECRET);
+    console.log(_password);
+
+    if (oldPassword === _password) {
+      // 校验成功
+      return await this.updateUserPassword(uid, password);
+    } else {
+      // 校验失败
+      throw new BadRequestException(tips.oldPasswordError);
+    }
   }
   /**
    * 获取用户信息 必定找到该用户
    * @param uid 用户id
    * @param exclude 哪些属性需要过滤掉
-   * @returns 
+   * @returns
    */
   async findUser(uid: number, exclude?: (keyof User)[]) {
     const user = await this.userModel.findOne({
       where: { uid },
       attributes: {
-        exclude: exclude ? exclude : []
-      }
-    })
+        exclude: exclude ? exclude : [],
+      },
+    });
     if (user === null) {
-      throw new NotFoundException(tips.noExist('用户'))
+      throw new NotFoundException(tips.noExist("用户"));
     }
-    return user
+    return user;
   }
   /**
- *  获取用户信息
- */
+   *  获取用户信息
+   */
   async info(uid: number) {
-    const user = await this.findUser(uid, ['password'])
-    return user
+    const user = await this.findUser(uid, ["password"]);
+    return user;
   }
   /**
    * 获取账户列表
-   * @param limit 长度 
+   * @param limit 长度
    * @param offset 偏移量
    * @returns 用户列表
    */
   async getAccountList(limit: number, offset: number) {
-    return await this.userModel.findAndCountAll({ limit, offset })
+    return await this.userModel.findAndCountAll({ limit, offset });
   }
   /**
    * 获取user基本信息，只要角色为user的 User管道必须要拦截非User角色的访问
-   * @param uid 
+   * @param uid
    */
   async getUser(uid: number) {
-    const user = await this.findUserWithoutPasswordAndRole(uid)
-    return user
+    const user = await this.findUserWithoutPasswordAndRole(uid);
+    return user;
   }
 }
