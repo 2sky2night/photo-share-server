@@ -10,6 +10,7 @@ import {
   PhotoController,
   UserLikePhotoController,
   UserCommentPhotoController,
+  PhotoEventsController,
 } from "./controller";
 import { UserModule } from "../user/user.module";
 import {
@@ -31,6 +32,7 @@ import { TokenParseMiddleware } from "../../common/middleware";
     PhotoController,
     UserLikePhotoController,
     UserCommentPhotoController,
+    PhotoEventsController,
   ],
 })
 export class PhotoModule implements NestModule {

@@ -1,4 +1,10 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { Photo } from "../model/photo.model";
 import { PhotoAuditDto } from "../dto/photo-audit.dto";
 import { UserService } from "../../user/user.service";
@@ -7,51 +13,76 @@ import { Roles } from "../../auth/role";
 import { UserLikePhoto } from "../model/user-like-photo.model";
 import { removeUndefined } from "../../../utils/tools";
 import tips from "../../../common/tips";
-import { Op } from "sequelize";
 import sequelize from "sequelize";
 import { UserCommentPhoto } from "../model/user-comment-photo";
+import type { EventEmitter } from "node:events";
 
 @Injectable()
 export class PhotoService {
   constructor(
     private userService: UserService,
-    @Inject('PhotoModel') private photoModel: typeof Photo,
-    @Inject('UserLikePhotoModel') private userLikePhotoModel: typeof UserLikePhoto,
-    @Inject('UserCommentPhotoModel') private userCommentPhotoModel: typeof UserCommentPhoto
-  ) { }
+    @Inject("Pubsub") private Pubsub: EventEmitter,
+    @Inject("PhotoModel") private photoModel: typeof Photo,
+    @Inject("UserLikePhotoModel")
+    private userLikePhotoModel: typeof UserLikePhoto,
+    @Inject("UserCommentPhotoModel")
+    private userCommentPhotoModel: typeof UserCommentPhoto,
+    @Inject("UserSubscribeAuditList")
+    private subscribers: { sessionId: string; uid: number }[]
+  ) {}
   /**
    * 发布照片
-   * @param uid 发布者id 
+   * @param uid 发布者id
    * @param photoCreateDto 请求体
    */
-  async create(uid: number, photoCreateDto: { title: string; content: string; photos: any }) {
+  async create(
+    uid: number,
+    photoCreateDto: { title: string; content: string; photos: any }
+  ) {
     // @ts-ignore
     const photo = this.photoModel.build({
       title: photoCreateDto.title,
       content: photoCreateDto.content,
       photos: JSON.stringify(photoCreateDto.photos),
-      publish_uid: uid
-    })
-    await photo.save()
-    return photo
+      publish_uid: uid,
+    });
+    await photo.save();
+    return photo;
   }
   /**
    * 审核照片
-   * @param pid 照片id 
+   * @param pid 照片id
    * @param uid 审核员id
-   * @param photoAuditDto 审核状态 
+   * @param photoAuditDto 审核状态
    */
   async auditPhoto(pid: number, uid: number, photoAuditDto: PhotoAuditDto) {
-    const photo = await this.findPhoto(pid)
+    const photo = await this.findPhoto(pid);
     if (photo.audit_uid) {
       // 有人审核了
-      throw new BadRequestException('此照片已经被审核了!')
+      throw new BadRequestException("此照片已经被审核了!");
     }
-    photo.status = photoAuditDto.status
-    photo.audit_desc = photoAuditDto.desc ? photoAuditDto.desc : null
-    photo.audit_time = new Date()
-    photo.audit_uid = uid
-    await photo.save()
+    photo.status = photoAuditDto.status;
+    photo.audit_desc = photoAuditDto.desc ? photoAuditDto.desc : null;
+    photo.audit_time = new Date();
+    photo.audit_uid = uid;
+    await photo.save();
+    // 审核结果推送
+    this.emitAuditResult(photo, photoAuditDto);
+    return void 0;
+  }
+  emitAuditResult(photo: Photo, photoAuditDto: PhotoAuditDto) {
+    // 若当前审核的照片作者订阅了审核推送结果就推送消息
+    const item = this.subscribers.findIndex(
+      (ele) => ele.uid === photo.publish_uid
+    );
+    if (item !== undefined) {
+      // 当前订阅中有作者，就推送消息
+      this.Pubsub.emit("audit-result", {
+        pid: photo.pid,
+        uid: photo.publish_uid,
+        ...photoAuditDto,
+      });
+    }
   }
   /**
    * 管理员获取照片
@@ -60,45 +91,64 @@ export class PhotoService {
    * @param offset 起始偏移量
    * @param limit 获取多少数据
    */
-  async adminFindPhotos(uid: number | undefined, status: AuditStatus | undefined, offset: number, limit: number) {
+  async adminFindPhotos(
+    uid: number | undefined,
+    status: AuditStatus | undefined,
+    offset: number,
+    limit: number
+  ) {
     // 照片列表
-    const { rows, count } = await this.photoModel.findAndCountAll({ where: removeUndefined({ publish_uid: uid, status }), offset, limit })
-    const list = await Promise.all(rows.map(async (photo) => {
-      const photoData = this.formatPhoto(photo)
-      const user = await this.userService.findUserWithoutPasswordAndRole(photo.publish_uid)
-      return {
-        ...photoData,
-        user
-      }
-    }))
+    const { rows, count } = await this.photoModel.findAndCountAll({
+      where: removeUndefined({ publish_uid: uid, status }),
+      offset,
+      limit,
+    });
+    const list = await Promise.all(
+      rows.map(async (photo) => {
+        const photoData = this.formatPhoto(photo);
+        const user = await this.userService.findUserWithoutPasswordAndRole(
+          photo.publish_uid
+        );
+        return {
+          ...photoData,
+          user,
+        };
+      })
+    );
     return {
       list,
       total: count,
       limit,
       offset,
-      has_more: count > offset + limit
-    }
+      has_more: count > offset + limit,
+    };
   }
   /**
    * 用户查看照片
-   * @param uid 
-   * @param status 
-   * @param offset 
-   * @param limit 
+   * @param uid
+   * @param status
+   * @param offset
+   * @param limit
    * @param currentUid
    */
-  async userFindPhotos(uid: number | undefined, status: AuditStatus | undefined, offset: number, limit: number, currentUid: number | undefined, desc: boolean) {
-    await this.accessuserFindPhotos(currentUid, uid, status)
+  async userFindPhotos(
+    uid: number | undefined,
+    status: AuditStatus | undefined,
+    offset: number,
+    limit: number,
+    currentUid: number | undefined,
+    desc: boolean
+  ) {
+    await this.accessuserFindPhotos(currentUid, uid, status);
     // 照片列表
-    const { rows, count: total } =
-      await this.photoModel.findAndCountAll({
-        where: removeUndefined({ publish_uid: uid, status }),
-        order: desc ? [['createdAt', 'DESC']] : [],
-        offset,
-        limit
-      })
+    const { rows, count: total } = await this.photoModel.findAndCountAll({
+      where: removeUndefined({ publish_uid: uid, status }),
+      order: desc ? [["createdAt", "DESC"]] : [],
+      offset,
+      limit,
+    });
 
-    const list = await this.getPhotosInfo(rows, currentUid)
+    const list = await this.getPhotosInfo(rows, currentUid);
 
     return {
       list,
@@ -106,23 +156,22 @@ export class PhotoService {
       offset,
       total,
       has_more: total > offset + limit,
-      desc
-    }
-
+      desc,
+    };
   }
   /**
    * 浏览照片数据上报
-   * @param pid 
+   * @param pid
    */
   async viewPhoto(pid: number) {
-    const photo = await this.findPhoto(pid)
-    photo.views++
-    await photo.save()
+    const photo = await this.findPhoto(pid);
+    photo.views++;
+    await photo.save();
   }
   /**
    * 分页浏览该用户发布的照片(准备废弃)
    * @param uid 作者id
-   * @param offset 起始偏移量 
+   * @param offset 起始偏移量
    * @param limit  获取长度
    * @param status 状态
    * @param currentUid 当前登录的用户
@@ -131,35 +180,40 @@ export class PhotoService {
    * 1.是普通用户，若查看的是自己的照片则status为任意值，若查看别人的则stauts只能为1
    * 2.是超级管理员，查看任意状态的数据
    */
-  async findAuthorPhotos(uid: number, offset: number, limit: number, status: AuditStatus | undefined, currentUid: number | undefined) {
+  async findAuthorPhotos(
+    uid: number,
+    offset: number,
+    limit: number,
+    status: AuditStatus | undefined,
+    currentUid: number | undefined
+  ) {
     // 保证作者是否存在在
-    const user = await this.userService.findUser(uid)
+    const user = await this.userService.findUser(uid);
     // 若作者不是User
     if (user.role !== Roles.User) {
-      throw new BadRequestException('此用户非User角色!')
+      throw new BadRequestException("此用户非User角色!");
     }
     // 校验调用权限
-    await this.accessGetAuthorPhotos(currentUid, uid, status)
+    await this.accessGetAuthorPhotos(currentUid, uid, status);
     // 查询总数
-    const total = await this.getAuthorPhotosLength(uid, status)
+    const total = await this.getAuthorPhotosLength(uid, status);
     // 获取初始数据
     const photos = await this.photoModel.findAll({
       where:
-        status === undefined ?
-          {
-            publish_uid: user.uid
-          } :
-          {
-            publish_uid: user.uid,
-            status
-          }
-      ,
+        status === undefined
+          ? {
+              publish_uid: user.uid,
+            }
+          : {
+              publish_uid: user.uid,
+              status,
+            },
       offset,
-      limit
-    })
+      limit,
+    });
 
     // 格式化photos字段
-    const list = photos.map((photo) => this.formatPhoto(photo))
+    const list = photos.map((photo) => this.formatPhoto(photo));
     // 根据用户角色判断是否查询照片被点赞数量
     if (status !== 1) {
       // 非审核通过的或全部照片，不需要查询点赞数量
@@ -168,79 +222,87 @@ export class PhotoService {
         total,
         limit,
         offset,
-        has_nore: total < offset + limit
-      }
+        has_nore: total < offset + limit,
+      };
     } else {
       // 若查看审核通过的照片
       // 获取用户角色
-      const user = currentUid !== undefined ? await this.userService.findUser(currentUid) : undefined
+      const user =
+        currentUid !== undefined
+          ? await this.userService.findUser(currentUid)
+          : undefined;
       // 若是User则需要查询用户对照片的点赞状态
-      const needCheckLike = user === undefined || user.role !== Roles.User ? false : true
+      const needCheckLike =
+        user === undefined || user.role !== Roles.User ? false : true;
       // 若查看的是审核通过的照片，需要查找照片点赞状态，以及点赞数量
-      const _list = await Promise.all(list.map(async (photo) => {
-        // 获取该照片被点赞的数量
-        const likeCount = await this.getLikePhotos(photo.pid)
-        // 获取当前用户的点赞状态
-        const is_liked = needCheckLike ? Boolean(await this.findLike(uid, photo.pid)) : false
-        return {
-          ...photo,
-          like_count: likeCount,
-          is_liked
-        }
-      }))
+      const _list = await Promise.all(
+        list.map(async (photo) => {
+          // 获取该照片被点赞的数量
+          const likeCount = await this.getLikePhotos(photo.pid);
+          // 获取当前用户的点赞状态
+          const is_liked = needCheckLike
+            ? Boolean(await this.findLike(uid, photo.pid))
+            : false;
+          return {
+            ...photo,
+            like_count: likeCount,
+            is_liked,
+          };
+        })
+      );
       return {
         list: _list,
         total,
         limit,
         offset,
-        has_nore: total < offset + limit
-      }
+        has_nore: total < offset + limit,
+      };
     }
   }
   /**
    * 获取用户某个照片
-   * @param pid 
-   * @param uid 
+   * @param pid
+   * @param uid
    */
   async getPhoto(pid: number, uid: number | undefined) {
-    const photo = await this.accountAccessPhoto(pid, uid)
-    const data = await this.getPhotoInfo(photo, uid)
-    return data
+    const photo = await this.accountAccessPhoto(pid, uid);
+    const data = await this.getPhotoInfo(photo, uid);
+    return data;
   }
   /**
- * 随机获取审核通过照片的图片
- * @param num 获取的数量
- */
+   * 随机获取审核通过照片的图片
+   * @param num 获取的数量
+   */
   async randomImgList(limit: number) {
     // 随机获取照片
-    const photos = (await this.photoModel.findAll({
+    const photos = await this.photoModel.findAll({
       where: {
-        status: AuditStatusList.Pass
+        status: AuditStatusList.Pass,
       },
-      order: sequelize.literal('rand()'), // 随机排序
-      limit
-    }))
+      order: sequelize.literal("rand()"), // 随机排序
+      limit,
+    });
     // 照片列表
-    const list: any[] = []
-    photos.forEach(photo => {
+    const list: any[] = [];
+    photos.forEach((photo) => {
       JSON.parse(photo.photos).forEach((ele: any) => {
-        list.push(ele)
-      })
-    })
+        list.push(ele);
+      });
+    });
     // 若实际没有获取到请求数量的图片，则循环获取，直至将数组长度铺满成请求数量limit
-    const nowCount = list.length
+    const nowCount = list.length;
     if (list.length < limit) {
-      let i = nowCount
+      let i = nowCount;
       while (i < limit) {
-        list.push(list[i % nowCount])
-        i++
+        list.push(list[i % nowCount]);
+        i++;
       }
     }
     return {
       list,
       count: nowCount,
-      limit
-    }
+      limit,
+    };
   }
   /**--------业务封装的分割线-------*/
   /**
@@ -250,47 +312,49 @@ export class PhotoService {
    */
   async getPhotoInfo(photo: Photo, uid: undefined | number) {
     // 查询照片作者的信息
-    const user = await this.userService.findUserWithoutPasswordAndRole(photo.publish_uid)
+    const user = await this.userService.findUserWithoutPasswordAndRole(
+      photo.publish_uid
+    );
     // 获取照片被用户喜欢的数量
-    const like_count = (await photo.getLikeds()).length
+    const like_count = (await photo.getLikeds()).length;
     // 当前用户是否喜欢此照片?
-    const is_liked = await this.findUserLikePhoto(photo.pid, uid)
-    const data = this.formatPhoto(photo)
+    const is_liked = await this.findUserLikePhoto(photo.pid, uid);
+    const data = this.formatPhoto(photo);
     // 获取评论的数量
-    const comment_count = await this.getPhotoCommentCount(photo.pid)
+    const comment_count = await this.getPhotoCommentCount(photo.pid);
     return {
       ...data,
       user,
       like_count,
       is_liked,
-      comment_count
-    }
+      comment_count,
+    };
   }
   /**
    * 用户是否可以访问该照片?
-   * @param pid 
-   * @param uid 
+   * @param pid
+   * @param uid
    */
   async accountAccessPhoto(pid: number, uid: number | undefined) {
-    const photo = await this.findPhoto(pid)
+    const photo = await this.findPhoto(pid);
     if (uid === undefined) {
       // 未登录
       if (photo.status !== AuditStatusList.Pass) {
         // 访问未通过的照片
-        throw new ForbiddenException(tips.forbiddenError)
+        throw new ForbiddenException(tips.forbiddenError);
       }
     } else {
       // 登录
-      const user = await this.userService.findUser(uid)
+      const user = await this.userService.findUser(uid);
       if (photo.status !== AuditStatusList.Pass) {
         // 访问未通过照片
         if (user.role === Roles.User && user.uid !== photo.publish_uid) {
           // 非作者且不是管理员
-          throw new ForbiddenException(tips.forbiddenError)
+          throw new ForbiddenException(tips.forbiddenError);
         }
       }
     }
-    return photo
+    return photo;
   }
   /**
    * 当前用户是否可以调用userFindPhotos服务？
@@ -298,15 +362,19 @@ export class PhotoService {
    * @param uid 作者
    * @param status 照片状态
    */
-  async accessuserFindPhotos(currentUid: number | undefined, uid: undefined | number, status: AuditStatus | undefined) {
+  async accessuserFindPhotos(
+    currentUid: number | undefined,
+    uid: undefined | number,
+    status: AuditStatus | undefined
+  ) {
     if (currentUid === undefined) {
       // 未登录用户
       if (status !== AuditStatusList.Pass) {
         // 访问非通过的照片
-        throw new ForbiddenException(tips.forbiddenError)
+        throw new ForbiddenException(tips.forbiddenError);
       } else {
         // 访问通过的照片
-        return
+        return;
       }
     } else {
       // 登录用户
@@ -314,14 +382,14 @@ export class PhotoService {
         // 登录用户访问非通过照片
         if (currentUid === uid) {
           // 访问自己的照片
-          return
+          return;
         } else {
           // 访问非自己的照片
-          throw new ForbiddenException(tips.forbiddenError)
+          throw new ForbiddenException(tips.forbiddenError);
         }
       } else {
         // 访问通过的照片
-        return
+        return;
       }
     }
   }
@@ -329,35 +397,42 @@ export class PhotoService {
    * 获取照片列表的详情数据
    * @param photos 照片列表
    * @param uid 当前登录的用户id
-   * @returns 
+   * @returns
    */
   async getPhotosInfo(photos: Photo[], uid: number | undefined) {
-    const list = await Promise.all(photos.map(async (row) => {
-      return this.getPhotoInfo(row, uid)
-    }))
-    return list
+    const list = await Promise.all(
+      photos.map(async (row) => {
+        return this.getPhotoInfo(row, uid);
+      })
+    );
+    return list;
   }
   /**
    * 用户是否点赞过照片
    * @param pid 照片id
    * @param uid 用户id
-   * @returns 
+   * @returns
    */
   async findUserLikePhoto(pid: number, uid: number | undefined) {
-    if (uid === undefined) return false
-    const row = await this.userLikePhotoModel.findOne({ where: { pid, uid } })
-    return row === null ? false : true
+    if (uid === undefined) return false;
+    const row = await this.userLikePhotoModel.findOne({ where: { pid, uid } });
+    return row === null ? false : true;
   }
   /**
-  * 获取用户的发照片数量
-  * @param publish_uid 作者id
-  * @param status 状态  undefined则访问所有状态的照片
-  */
-  async getAuthorPhotosLength(publish_uid: number, status: AuditStatus | undefined) {
-    await this.userService.findUser(publish_uid)
-    return (await this.photoModel.findAll({
-      where: status === undefined ? { publish_uid } : { publish_uid, status }
-    })).length
+   * 获取用户的发照片数量
+   * @param publish_uid 作者id
+   * @param status 状态  undefined则访问所有状态的照片
+   */
+  async getAuthorPhotosLength(
+    publish_uid: number,
+    status: AuditStatus | undefined
+  ) {
+    await this.userService.findUser(publish_uid);
+    return (
+      await this.photoModel.findAll({
+        where: status === undefined ? { publish_uid } : { publish_uid, status },
+      })
+    ).length;
   }
   /**
    * 控制findAuthorPhotos访问权限
@@ -368,41 +443,49 @@ export class PhotoService {
    * @param currentUid 登录的用户
    * @param uid 作者id
    * @param status 审核状态，undefined为访问所有状态的照片列表
-   * @returns 
+   * @returns
    */
-  async accessGetAuthorPhotos(currentUid: number | undefined, uid: number, status: AuditStatus | undefined) {
+  async accessGetAuthorPhotos(
+    currentUid: number | undefined,
+    uid: number,
+    status: AuditStatus | undefined
+  ) {
     // 保证uid存在
 
     if (currentUid === undefined) {
       // 未登录
       if (status === AuditStatusList.Pass) {
         // 访问通过的照片
-        return true
+        return true;
       } else {
         // 除审核通过以外的照片
-        throw new ForbiddenException('无权访问!')
+        throw new ForbiddenException("无权访问!");
       }
     } else {
-      // 登录了      
+      // 登录了
       // 获取登录用户的角色
-      const { role } = await this.userService.findUser(currentUid)
+      const { role } = await this.userService.findUser(currentUid);
       if (role === Roles.SuperAdmin || role === Roles.Admin) {
         // 管理员和超级管理员随意访问资源
-        return true
+        return true;
       } else {
         // 普通用户
-        if (status === AuditStatusList.NotAudit || status === AuditStatusList.NoPass || status === undefined) {
+        if (
+          status === AuditStatusList.NotAudit ||
+          status === AuditStatusList.NoPass ||
+          status === undefined
+        ) {
           // 未审核和未通过的和全部
           if (currentUid === uid) {
             // 是用户本身访问自己的照片
-            return true
+            return true;
           } else {
             // 非用户本身访问自己的照片
-            throw new ForbiddenException('无权访问!')
+            throw new ForbiddenException("无权访问!");
           }
         } else {
           // 审核通过的
-          return true
+          return true;
         }
       }
     }
@@ -412,7 +495,8 @@ export class PhotoService {
    * @param pid 已经审核通过的照片
    */
   async getPhotoCommentCount(pid: number) {
-    return (await this.userCommentPhotoModel.findAll({ where: { pid } })).length
+    return (await this.userCommentPhotoModel.findAll({ where: { pid } }))
+      .length;
   }
   /**
    * 格式化照片的photos字段，返回处理后的照片项
@@ -431,17 +515,17 @@ export class PhotoService {
       status: photo.status,
       createdAt: photo.createdAt,
       updatedAt: photo.updatedAt,
-      views: photo.views
-    }
+      views: photo.views,
+    };
   }
   /**
- * 某个用户对照片的点赞状态
- * @param uid 用户id
- * @param pid 照片id 照片必须存在
- * @returns 是否有该点赞信息?
- */
+   * 某个用户对照片的点赞状态
+   * @param uid 用户id
+   * @param pid 照片id 照片必须存在
+   * @returns 是否有该点赞信息?
+   */
   async findLike(uid: number, pid: number) {
-    return await this.userLikePhotoModel.findOne({ where: { uid, pid } })
+    return await this.userLikePhotoModel.findOne({ where: { uid, pid } });
   }
   /**
    * 获取照片被点赞的数量
@@ -449,25 +533,25 @@ export class PhotoService {
    */
   async getLikePhotos(pid: number) {
     // 查询照片被点赞的数量
-    return (await this.userLikePhotoModel.findAll({ where: { pid } })).length
+    return (await this.userLikePhotoModel.findAll({ where: { pid } })).length;
   }
   /**
- * 查询照片（不一定有该照片）
- * @param pid 照片id
- */
+   * 查询照片（不一定有该照片）
+   * @param pid 照片id
+   */
   async find(pid: number) {
-    return await this.photoModel.findByPk(pid)
+    return await this.photoModel.findByPk(pid);
   }
   /**
    * 查询照片
    * @param pid 照片id
-   * @returns 照片示例 
+   * @returns 照片示例
    */
   async findPhoto(pid: number) {
-    const photo = await this.find(pid)
+    const photo = await this.find(pid);
     if (photo === null) {
-      throw new NotFoundException(tips.noExist('照片'))
+      throw new NotFoundException(tips.noExist("照片"));
     }
-    return photo
+    return photo;
   }
 }
