@@ -5,30 +5,31 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { Photo } from "../model/photo.model";
-import { PhotoAuditDto } from "../dto/photo-audit.dto";
-import { UserService } from "../../user/user.service";
-import { AuditStatus, AuditStatusList } from "../../../types/photo";
-import { Roles } from "../../auth/role";
-import { UserLikePhoto } from "../model/user-like-photo.model";
-import { removeUndefined } from "../../../utils/tools";
-import tips from "../../../common/tips";
-import sequelize from "sequelize";
-import { UserCommentPhoto } from "../model/user-comment-photo";
 import type { EventEmitter } from "node:events";
+import sequelize from "sequelize";
+import tips from "../../../common/tips";
+import { AuditStatus, AuditStatusList } from "../../../types/photo";
+import { removeUndefined } from "../../../utils/tools";
+import { Roles } from "../../auth/role";
+import { UserService } from "../../user/user.service";
+import { PhotoAuditDto } from "../dto";
+import { Photo } from "../model/photo.model";
+import { UserCommentPhoto } from "../model/user-comment-photo";
+import { UserLikePhoto } from "../model/user-like-photo.model";
+import { Op } from "sequelize";
 
 @Injectable()
 export class PhotoService {
   constructor(
-    private userService: UserService,
-    @Inject("Pubsub") private Pubsub: EventEmitter,
-    @Inject("PhotoModel") private photoModel: typeof Photo,
+    readonly userService: UserService,
+    @Inject("Pubsub") readonly Pubsub: EventEmitter,
+    @Inject("PhotoModel") readonly photoModel: typeof Photo,
     @Inject("UserLikePhotoModel")
-    private userLikePhotoModel: typeof UserLikePhoto,
+    readonly userLikePhotoModel: typeof UserLikePhoto,
     @Inject("UserCommentPhotoModel")
-    private userCommentPhotoModel: typeof UserCommentPhoto,
+    readonly userCommentPhotoModel: typeof UserCommentPhoto,
     @Inject("UserSubscribeAuditList")
-    private subscribers: { sessionId: string; uid: number }[]
+    readonly subscribers: { sessionId: string; uid: number }[]
   ) {}
   /**
    * 发布照片
@@ -69,20 +70,6 @@ export class PhotoService {
     // 审核结果推送
     this.emitAuditResult(photo, photoAuditDto);
     return void 0;
-  }
-  emitAuditResult(photo: Photo, photoAuditDto: PhotoAuditDto) {
-    // 若当前审核的照片作者订阅了审核推送结果就推送消息
-    const item = this.subscribers.findIndex(
-      (ele) => ele.uid === photo.publish_uid
-    );
-    if (item !== undefined) {
-      // 当前订阅中有作者，就推送消息
-      this.Pubsub.emit("audit-result", {
-        pid: photo.pid,
-        uid: photo.publish_uid,
-        ...photoAuditDto,
-      });
-    }
   }
   /**
    * 管理员获取照片
@@ -260,7 +247,7 @@ export class PhotoService {
     }
   }
   /**
-   * 获取用户某个照片
+   * 获取某个照片
    * @param pid
    * @param uid
    */
@@ -268,6 +255,19 @@ export class PhotoService {
     const photo = await this.accountAccessPhoto(pid, uid);
     const data = await this.getPhotoInfo(photo, uid);
     return data;
+  }
+  /**
+   * 获取一些照片
+   * @param pids
+   * @param uid
+   * @returns
+   */
+  async getPhotos(pids: number[], uid: number | undefined) {
+    return await Promise.all(
+      pids.map((pid) => {
+        return this.getPhoto(pid, uid);
+      })
+    );
   }
   /**
    * 随机获取审核通过照片的图片
@@ -305,6 +305,25 @@ export class PhotoService {
     };
   }
   /**--------业务封装的分割线-------*/
+  /**
+   * 审核结果推送
+   * @param photo
+   * @param photoAuditDto
+   */
+  emitAuditResult(photo: Photo, photoAuditDto: PhotoAuditDto) {
+    // 若当前审核的照片作者订阅了审核推送结果就推送消息
+    const item = this.subscribers.findIndex(
+      (ele) => ele.uid === photo.publish_uid
+    );
+    if (item !== undefined) {
+      // 当前订阅中有作者，就推送消息
+      this.Pubsub.emit("audit-result", {
+        pid: photo.pid,
+        uid: photo.publish_uid,
+        ...photoAuditDto,
+      });
+    }
+  }
   /**
    * 根据账户获取照片信息
    * @param photo 照片

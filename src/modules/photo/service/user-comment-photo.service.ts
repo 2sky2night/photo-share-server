@@ -5,7 +5,6 @@ import { UserLikeComment } from "../model/user-like-comment.model";
 import tips from "../../../common/tips";
 import { UserService } from "../../user/user.service";
 import { Roles } from "../../auth/role";
-import { PhotoService } from "./photo.service";
 
 @Injectable()
 export class UserCommentPhotoService {
@@ -13,11 +12,11 @@ export class UserCommentPhotoService {
     /**
      * 用户评论照片模型
      */
-    @Inject("UserCommentPhotoModel") private UCPModel: typeof UserCommentPhoto,
+    @Inject("UserCommentPhotoModel") readonly UCPModel: typeof UserCommentPhoto,
     /**
      * 用户点赞评论的模型
      */
-    @Inject("UserLikeCommentModel") private ULCModel: typeof UserLikeComment,
+    @Inject("UserLikeCommentModel") readonly ULCModel: typeof UserLikeComment,
     private userService: UserService
   ) {}
   /**

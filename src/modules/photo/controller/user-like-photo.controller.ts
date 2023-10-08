@@ -7,7 +7,7 @@ import {
   Get,
   Query,
 } from "@nestjs/common";
-import { UserLikePhotoService } from "../service/user-like-photo.service";
+import { UserLikePhotoService } from "../service";
 import { AuthGuard, RoleGuard } from "../../../common/guard";
 import { Token, TokenOptional } from "../../../common/decorator";
 import { Role } from "../../../common/decorator/role.decorator";

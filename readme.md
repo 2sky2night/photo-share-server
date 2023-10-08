@@ -1,15 +1,18 @@
 照片墙小项目
-
+[toc]
 **待完成的功能**
-1.搜索（前台、后台）
-2.照片标签
-  1.前台用户可以通过标签快速找到敢兴趣的标签，一个用户有多个标签，一个标签可以用于多个照片
-  2.后台管理员可以管理标签
-3.通知系统？？点赞、评论通知
+
+1. 搜索（前台、后台）
+2. 照片标签
+3. 前台用户可以通过标签快速找到敢兴趣的标签，一个用户有多个标签，一个标签可以用于多个照片
+4. 后台管理员可以管理标签
+5. 通知系统？？点赞、评论通知
 
 ## 功能描述
 
- 浏览分享照片的网站，用户可以分享、点赞、浏览照片。照片需要审核才可以被发布，管理员可以审核照片、超级管理员可以审核和管理所有账号。所有角色都可以修改自己的基本信息。角色有：用户 User、管理员 Admin、超级管理员 SuperAdmin。
+浏览分享照片的网站，用户可以分享、点赞、浏览照片。照片需要审核才可以被发布，管理员可以审核照片、超级管理员可以审核和管理所有账号。所有角色都可以修改自己的基本信息。
+
+角色有：用户 User、管理员 Admin、超级管理员 SuperAdmin。
 
 用户：只能进入前台页面，查看、点赞、分享照片，修改自己的基本资料，查看自己分享的照片（包括审核、未审核的照片），用户点击详情照片后需要上报信息。
 
@@ -82,7 +85,7 @@ ts2564 错误：声明的属性未在构造函数中初始化？解决，在 ts.
 
 ##### 配置热重载
 
- nodemon 监听 src 文件夹，src 文件夹内部文件有改动就执行 ts-node src/main.ts
+nodemon 监听 src 文件夹，src 文件夹内部文件有改动就执行 ts-node src/main.ts
 
 ```json
 {
@@ -109,7 +112,7 @@ pnpm add @types/express -D
 
 ##### 启动 Nest 应用
 
- 创建根模块以及配置相关设置，启动应用。
+创建根模块以及配置相关设置，启动应用。
 
 ```ts
 // 根模块
@@ -195,7 +198,7 @@ export const databaseProvider: Provider[] = [
 
 ##### 3.将数据库封装模块，并导出数据
 
- 通过 Module 装饰器修饰 DatabaseModule，把他当作一个模块，通过 provider 将 sequelize 作为模块的提供者，通过 export 将 sequelize 暴露出去，这样其他模块可以通过 import 导入就可以使用 sequelize 了。
+通过 Module 装饰器修饰 DatabaseModule，把他当作一个模块，通过 provider 将 sequelize 作为模块的提供者，通过 export 将 sequelize 暴露出去，这样其他模块可以通过 import 导入就可以使用 sequelize 了。
 
 ```ts
 import { Module } from "@nestjs/common";
@@ -228,7 +231,7 @@ export class AppModule {}
 
 #### 1.统一的响应风格
 
- 使用拦截器实现统一的响应风格，拦截器可以控制处理函数的执行且可以调用处理函数，并获得处理函数的结果，还可以二次加工结果，将加工后的结果响应给客户端。
+使用拦截器实现统一的响应风格，拦截器可以控制处理函数的执行且可以调用处理函数，并获得处理函数的结果，还可以二次加工结果，将加工后的结果响应给客户端。
 
 ##### 定义拦截器
 
@@ -333,16 +336,29 @@ appStart();
 ##### 定义
 
 ```ts
-import { ExceptionFilter, Catch, ArgumentsHost } from "@nestjs/common";
+import { ExceptionFilter, Catch, ArgumentsHost, Logger } from "@nestjs/common";
 import { Request, Response } from "express";
-
+import { format } from "node:util";
 @Catch()
 export class InternalErrorFilter implements ExceptionFilter {
+  logger: Logger;
+  constructor() {
+    this.logger = new Logger();
+  }
   catch(exception: any, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
-
+    // 在控制台打印内部错误信息
+    this.logger.error(
+      JSON.stringify({
+        timeStamp: Date.now(),
+        path: request.path,
+        method: request.method,
+        exception: exception.toString ? exception.toString() : exception,
+      })
+    );
+    // 给客户端响应的消息
     response.status(500).json({
       code: 500,
       msg: "Internal Server Error",
@@ -378,7 +394,7 @@ appStart();
 
 #### 4.打印请求日志
 
- 拦截器可以在调用处理函数前后可以做一些事情，我们可以在客户端请求接口时会打印请求接口的状态，在接口出现内容错误时也能及时定位到错误的路由处理函数。
+拦截器可以在调用处理函数前后可以做一些事情，我们可以在客户端请求接口时会打印请求接口的状态，在接口出现内容错误时也能及时定位到错误的路由处理函数。
 
 ##### 定义
 
@@ -465,7 +481,7 @@ appStart();
 
 #### 5.管道
 
- 通过编写自定义管道，可以在校验参数失败时，定义响应错误的原因，Nest 内置的 ValidationPipe 不能响应自定义的内容。
+通过编写自定义管道，可以在校验参数失败时，定义响应错误的原因，Nest 内置的 ValidationPipe 不能响应自定义的内容。
 
 ##### 全局校验对象管道
 
@@ -513,36 +529,40 @@ export class ValidationPipe implements PipeTransform<any> {
 
 ##### 照片 id 管道
 
-​	校验参数的管道，pid，照片必须存在才能放行的中间件。
+校验参数的管道，pid，照片必须存在才能放行的中间件。
 
 ```ts
-import { BadRequestException, NotFoundException, PipeTransform } from "@nestjs/common";
+import {
+  BadRequestException,
+  NotFoundException,
+  PipeTransform,
+} from "@nestjs/common";
 import { Photo } from "../../modules/photo/model/photo.model";
 import tips from "../tips";
 
 export class PhotoPipe implements PipeTransform<string, Promise<number>> {
-  private photoModel: typeof Photo
+  private photoModel: typeof Photo;
   constructor() {
-    this.photoModel = Photo
+    this.photoModel = Photo;
   }
   async transform(pid: string) {
     // value为传入的值,该函数返回啥则被修饰的参数就会是什么
     // 解析pid
-    const _pid = +pid
+    const _pid = +pid;
     if (isNaN(_pid)) {
-      throw new BadRequestException(tips.paramsError('pid'))
+      throw new BadRequestException(tips.paramsError("pid"));
     }
     // 查询pid在数据库中是否存在
-    const photo = await this.photoModel.findByPk(_pid)
+    const photo = await this.photoModel.findByPk(_pid);
     if (photo === null) {
-      throw new NotFoundException(tips.notFound('照片'))
+      throw new NotFoundException(tips.notFound("照片"));
     }
-    return _pid
+    return _pid;
   }
 }
 ```
 
-##### offset管道
+##### offset 管道
 
 ```ts
 import { BadRequestException, PipeTransform } from "@nestjs/common";
@@ -554,21 +574,21 @@ export class OffsetPipe implements PipeTransform<string | undefined, number> {
   transform(value: string | undefined) {
     if (value === undefined) {
       // 默认offset为0
-      return 0
+      return 0;
     }
-    const offset = parseInt(value)
+    const offset = parseInt(value);
     if (isNaN(offset)) {
-      throw new BadRequestException('offset必须为数字型!')
+      throw new BadRequestException("offset必须为数字型!");
     }
     if (offset < 0) {
-      throw new BadRequestException('offset必须为正数!')
+      throw new BadRequestException("offset必须为正数!");
     }
-    return offset
+    return offset;
   }
 }
 ```
 
-##### limit管道
+##### limit 管道
 
 ```ts
 import { BadRequestException, PipeTransform } from "@nestjs/common";
@@ -580,16 +600,16 @@ export class LimitPipe implements PipeTransform<string | undefined, number> {
   transform(value: string | undefined) {
     if (value === undefined) {
       // 默认limit为20
-      return 20
+      return 20;
     }
-    const limit = parseInt(value)
+    const limit = parseInt(value);
     if (isNaN(limit)) {
-      throw new BadRequestException('limit必须为数字型!')
+      throw new BadRequestException("limit必须为数字型!");
     }
     if (limit <= 0) {
-      throw new BadRequestException('limit非法!')
+      throw new BadRequestException("limit非法!");
     }
-    return limit
+    return limit;
   }
 }
 ```
@@ -603,30 +623,41 @@ import { AuditStatus, AuditStatusList } from "../../types/photo";
 /**
  * 照片审核状态管道
  */
-export class StatusPipe implements PipeTransform<string|undefined, AuditStatus> {
-  transform(value: string|undefined): AuditStatus {
+export class StatusPipe
+  implements PipeTransform<string | undefined, AuditStatus>
+{
+  transform(value: string | undefined): AuditStatus {
     if (value === undefined) {
       // 默认查找审核通过的
-      return AuditStatusList.Pass
+      return AuditStatusList.Pass;
     }
-    const status = +value
+    const status = +value;
     if (isNaN(status)) {
-      throw new BadRequestException('审核状态不合法!')
+      throw new BadRequestException("审核状态不合法!");
     }
-    if (status !== AuditStatusList.NoPass && status !== AuditStatusList.Pass && status !== AuditStatusList.NotAudit) {
-      throw new BadRequestException('审核状态不合法!')
+    if (
+      status !== AuditStatusList.NoPass &&
+      status !== AuditStatusList.Pass &&
+      status !== AuditStatusList.NotAudit
+    ) {
+      throw new BadRequestException("审核状态不合法!");
     }
-    return status
+    return status;
   }
 }
 ```
 
 ##### 可选用户管道
 
-​	若传入了参数，则需要解析校验参数，并且要拿这个参数当前uid查询用户是否存在，且用户角色必须是User
+若传入了参数，则需要解析校验参数，并且要拿这个参数当前 uid 查询用户是否存在，且用户角色必须是 User
 
 ```ts
-import { ArgumentMetadata, BadRequestException, NotFoundException, PipeTransform } from "@nestjs/common";
+import {
+  ArgumentMetadata,
+  BadRequestException,
+  NotFoundException,
+  PipeTransform,
+} from "@nestjs/common";
 import tips from "../tips";
 import { User } from "../../modules/user/model/user.model";
 import { Roles } from "../../modules/auth/role";
@@ -634,40 +665,46 @@ import { Roles } from "../../modules/auth/role";
 /**
  * 可选用户管道，若参数为undefined，则直接返回，若传入了参数，则需要检验用户是否存在，且用户角色必须是User
  */
-export class UserOptionalPipe implements PipeTransform<string, Promise<number | undefined>>{
-  userModel: typeof User
+export class UserOptionalPipe
+  implements PipeTransform<string, Promise<number | undefined>>
+{
+  userModel: typeof User;
   constructor() {
-    this.userModel = User
+    this.userModel = User;
   }
   async transform(value: string | undefined): Promise<number | undefined> {
     if (value === undefined) {
-      return undefined
+      return undefined;
     }
-    const uid = +value
+    const uid = +value;
     if (isNaN(uid)) {
-      throw new BadRequestException(tips.paramsError('uid'))
+      throw new BadRequestException(tips.paramsError("uid"));
     }
-    await this.getUser(uid)
-    return uid
+    await this.getUser(uid);
+    return uid;
   }
   async getUser(uid: number) {
-    const user = await this.userModel.findByPk(uid)
+    const user = await this.userModel.findByPk(uid);
     if (user === null) {
-      throw new NotFoundException(tips.noExist('用户'))
+      throw new NotFoundException(tips.noExist("用户"));
     }
     if (user.role !== Roles.User) {
-      throw new BadRequestException(tips.roleError)
+      throw new BadRequestException(tips.roleError);
     }
   }
 }
 ```
 
-##### 必选User管道
+##### 必选 User 管道
 
-解析参数，参数作为用户id，且用户必须存在，且用户角色必须是User
+解析参数，参数作为用户 id，且用户必须存在，且用户角色必须是 User
 
 ```ts
-import { BadRequestException, NotFoundException, PipeTransform } from "@nestjs/common";
+import {
+  BadRequestException,
+  NotFoundException,
+  PipeTransform,
+} from "@nestjs/common";
 import { User } from "../../modules/user/model/user.model";
 import tips from "../tips";
 import { Roles } from "../../modules/auth/role";
@@ -675,26 +712,26 @@ import { Roles } from "../../modules/auth/role";
 /**
  * 用户管道，解析参数，并查询用户是否存在，且用户角色必须是User
  */
-export class UserPipe implements PipeTransform<string, Promise<number>>{
-  userModel: typeof User
+export class UserPipe implements PipeTransform<string, Promise<number>> {
+  userModel: typeof User;
   constructor() {
-    this.userModel = User
+    this.userModel = User;
   }
   async transform(value: string): Promise<number> {
-    const uid = +value
+    const uid = +value;
     if (isNaN(uid)) {
-      throw new BadRequestException(tips.paramsError('uid'))
+      throw new BadRequestException(tips.paramsError("uid"));
     }
-    await this.getUser(uid)
-    return uid
+    await this.getUser(uid);
+    return uid;
   }
   async getUser(uid: number) {
-    const user = await this.userModel.findByPk(uid)
+    const user = await this.userModel.findByPk(uid);
     if (user === null) {
-      throw new NotFoundException(tips.noExist('用户'))
+      throw new NotFoundException(tips.noExist("用户"));
     }
     if (user.role !== Roles.User) {
-      throw new BadRequestException(tips.roleError)
+      throw new BadRequestException(tips.roleError);
     }
   }
 }
@@ -702,42 +739,44 @@ export class UserPipe implements PipeTransform<string, Promise<number>>{
 
 ##### 审核通过的照片管道
 
- 照片必须存在，且照片必须是审核通过的才能放行的管道
+照片必须存在，且照片必须是审核通过的才能放行的管道
 
 ```ts
-import { BadRequestException, NotFoundException, PipeTransform } from "@nestjs/common";
+import {
+  BadRequestException,
+  NotFoundException,
+  PipeTransform,
+} from "@nestjs/common";
 import { Photo } from "../../modules/photo/model/photo.model";
 import tips from "../tips";
 import { AuditStatusList } from "../../types/photo";
 
-export class PhotoPassPipe implements PipeTransform<string, Promise<number>>{
-  private photoModel: typeof Photo
+export class PhotoPassPipe implements PipeTransform<string, Promise<number>> {
+  private photoModel: typeof Photo;
   constructor() {
-    this.photoModel = Photo
+    this.photoModel = Photo;
   }
   async transform(pid: string) {
     // value为传入的值,该函数返回啥则被修饰的参数就会是什么
     // 解析pid
-    const _pid = +pid
+    const _pid = +pid;
     if (isNaN(_pid)) {
-      throw new BadRequestException(tips.paramsError('pid'))
+      throw new BadRequestException(tips.paramsError("pid"));
     }
     // 查询pid在数据库中是否存在
-    const photo = await this.photoModel.findByPk(_pid)
+    const photo = await this.photoModel.findByPk(_pid);
     if (photo === null) {
-      throw new NotFoundException(tips.notFound('照片'))
+      throw new NotFoundException(tips.notFound("照片"));
     }
     if (photo.status === AuditStatusList.Pass) {
       // 审核通过的照片
-      return _pid
+      return _pid;
     } else {
-      throw new BadRequestException(tips.photoIsNotAudit)
+      throw new BadRequestException(tips.photoIsNotAudit);
     }
   }
 }
 ```
-
-
 
 #### 6.解析 token 的中间件
 
@@ -792,11 +831,11 @@ export class TokenParseMiddleware implements NestMiddleware {
 
 #### 7.解析保存上下文中的 token 用户数据
 
- 使用参数装饰器并修饰在控制层处理函数中可以很方便的数据注入到处理函数中。对于我们把 token 数据保存在请求上下文中需要我们手动`req.user`获取数据，有点麻烦。可以封装一个装饰器来快捷的获取到上下文中的指定内容。
+使用参数装饰器并修饰在控制层处理函数中可以很方便的数据注入到处理函数中。对于我们把 token 数据保存在请求上下文中需要我们手动`req.user`获取数据，有点麻烦。可以封装一个装饰器来快捷的获取到上下文中的指定内容。
 
 ##### 简单示例：
 
- 返回的内容会直接注入到对应修饰的参数中
+返回的内容会直接注入到对应修饰的参数中
 
 ```ts
 import { createParamDecorator } from "@nestjs/common";
@@ -878,7 +917,7 @@ export const Token = createParamDecorator(
 
 #### 8.鉴权路由守卫
 
- 通过路由守卫，可以很好的限制哪些用户可以访问该接口。由于守卫也属于中间件的一种，我们也可以通过他来访问上下文，并把解析出来的数据保存在上下文中，方便路由处理函数获取 token 数据。
+通过路由守卫，可以很好的限制哪些用户可以访问该接口。由于守卫也属于中间件的一种，我们也可以通过他来访问上下文，并把解析出来的数据保存在上下文中，方便路由处理函数获取 token 数据。
 
 ##### 定义路由守卫
 
@@ -947,7 +986,7 @@ export class AuthGuard implements CanActivate {
 
 ##### 参数装饰器解析 token
 
- 将 token 数据保存在上下文时，在路由处理函数我们需要使用@Req 装饰器来获取 request，再链式访问才能获取到解析出来的 token 数据，会比较麻烦，我们可以封装一个参数装饰器，来快速获取上下文中的 token
+将 token 数据保存在上下文时，在路由处理函数我们需要使用@Req 装饰器来获取 request，再链式访问才能获取到解析出来的 token 数据，会比较麻烦，我们可以封装一个参数装饰器，来快速获取上下文中的 token
 
 ```ts
 import { BadGatewayException, createParamDecorator } from "@nestjs/common";
@@ -994,11 +1033,11 @@ export const Token = createParamDecorator(
 
 #### 9.角色守卫
 
- 角色守卫会在执行路由处理函数前，根据当 token 中的 uid 来检查用户拥有的角色，若用户的角色满足该路由的访问权限就可以调用该接口。
+角色守卫会在执行路由处理函数前，根据当 token 中的 uid 来检查用户拥有的角色，若用户的角色满足该路由的访问权限就可以调用该接口。
 
 ##### 路由元数据
 
- 我们需要使用自定义方法装饰器给路由处理函数挂载元数据，给路由处理函数设置哪些角色可以访问该路由的信息。这样我们的角色守卫就可以获取路由处理函数的元数据从而知晓该路由处理函数所需要的权限。
+我们需要使用自定义方法装饰器给路由处理函数挂载元数据，给路由处理函数设置哪些角色可以访问该路由的信息。这样我们的角色守卫就可以获取路由处理函数的元数据从而知晓该路由处理函数所需要的权限。
 
 ```ts
 // role.decorator.ts
@@ -1078,72 +1117,83 @@ export class RoleGuard implements CanActivate {
 
 #### 10.静态图片资源中间件
 
-​	上传图片后，图片会保存在本地磁盘里面，我们需要服务器将这些静态资源映射出来，这样外部就能请求加载这些资源从而访问图片了。
+上传图片后，图片会保存在本地磁盘里面，我们需要服务器将这些静态资源映射出来，这样外部就能请求加载这些资源从而访问图片了。
 
-​	通过文件流分片段读取数据到内存中，减少开销，读取完成后，返回给客户端。
+通过文件流分片段读取数据到内存中，减少开销，读取完成后，返回给客户端。
 
 ```ts
-import { InternalServerErrorException, NotFoundException } from "@nestjs/common";
+import {
+  InternalServerErrorException,
+  NotFoundException,
+} from "@nestjs/common";
 import { Request, Response } from "express";
-import fs from 'fs'
-import path from 'path'
-export async function StaticImgMiddleware(req: Request, res: Response, next: any) {
-
-  if (req.path.substring(0, 7) === '/static') {
+import fs from "fs";
+import path from "path";
+export async function StaticImgMiddleware(
+  req: Request,
+  res: Response,
+  next: any
+) {
+  if (req.path.substring(0, 7) === "/static") {
     // 静态资源路径是否存在?
-    const rootPath = path.resolve('./src/static')
+    const rootPath = path.resolve("./src/static");
     if (!fs.existsSync(rootPath)) {
       res.status(500).json({
         code: 500,
-        msg: 'Internal Server Error',
-        timestamp: Date.now()
-      })
-      console.error('服务器未挂载静态图片资源!')
-      return
+        msg: "Internal Server Error",
+        timestamp: Date.now(),
+      });
+      console.error("服务器未挂载静态图片资源!");
+      return;
     }
     // 截取路径
     // 并将url编码解码，解决中文字符被转码，导致路径与实际存储的路径不一致导致读取不到对应文件
     // 因为发送请求时会自动把url中某些字符转码，导致中文字符被转码，不能读取到对应的文件
-    const staticPath = decodeURI(req.path.substring(7))
+    const staticPath = decodeURI(req.path.substring(7));
     // 拼接路径
-    const filePath = path.resolve('./src/static', `.${staticPath}`)
+    const filePath = path.resolve("./src/static", `.${staticPath}`);
     // 若文件存在
     if (fs.existsSync(filePath)) {
       const fileData = await new Promise((resolve) => {
-        const bufferArray: Buffer[] = []
+        const bufferArray: Buffer[] = [];
         // 每次读取100kb的数据
-        const rs = fs.createReadStream(filePath, { highWaterMark: 1024 * 100 })
+        const rs = fs.createReadStream(filePath, { highWaterMark: 1024 * 100 });
         // 每次读取数据时保存该文件片段
-        rs.on('data', (chuck: Buffer) => {
-          bufferArray.push(chuck)
-        })
-        rs.on('end', () => {
-          resolve(Buffer.concat(bufferArray))
-        })
-        rs.on('error', () => {
-          throw new InternalServerErrorException('读取文件失败!')
-        })
-      })
+        rs.on("data", (chuck: Buffer) => {
+          bufferArray.push(chuck);
+        });
+        rs.on("end", () => {
+          resolve(Buffer.concat(bufferArray));
+        });
+        rs.on("error", () => {
+          throw new InternalServerErrorException("读取文件失败!");
+        });
+      });
       // 设置响应头部为图片类型，若不设置响应体类型返回二进制文件会直接下载文件，这样设置会被解析成图片文件了
-      res.setHeader('content-type', 'image/jpeg')
+      res.setHeader("content-type", "image/jpeg");
 
-      res.send(fileData)
+      res.send(fileData);
     } else {
-      throw new NotFoundException('静态资源不存在!')
+      throw new NotFoundException("静态资源不存在!");
     }
-
   } else {
-    next()
+    next();
   }
 }
 ```
 
-#### 11.User拦截器
+#### 11.User 拦截器
 
-​	拦截管理员和超级管理员的拦截器
+拦截管理员和超级管理员的拦截器
 
 ```ts
-import { CallHandler, ExecutionContext, ForbiddenException, NestInterceptor, UnauthorizedException } from "@nestjs/common";
+import {
+  CallHandler,
+  ExecutionContext,
+  ForbiddenException,
+  NestInterceptor,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
 import { Observable } from "rxjs";
@@ -1156,94 +1206,102 @@ import { Roles } from "../../modules/auth/role";
  * 用户拦截器，不拦截User和未登录用户
  */
 export class UserInterceptor implements NestInterceptor {
-  jwtService: JwtService
-  userModel: typeof User
+  jwtService: JwtService;
+  userModel: typeof User;
   constructor() {
-    this.jwtService = new JwtService()
-    this.userModel = User
+    this.jwtService = new JwtService();
+    this.userModel = User;
   }
-  async intercept(context: ExecutionContext, next: CallHandler<any>): Promise<Observable<any>> {
-    const request = context.switchToHttp().getRequest<Request>()
-    const token = this.getToken(request)
+  async intercept(
+    context: ExecutionContext,
+    next: CallHandler<any>
+  ): Promise<Observable<any>> {
+    const request = context.switchToHttp().getRequest<Request>();
+    const token = this.getToken(request);
     if (token !== undefined) {
       try {
-        const playload = await this.jwtService.verifyAsync(token, { secret: JWT_SECRET }) as TokenData
-        await this.checkUser(playload.sub)
+        const playload = (await this.jwtService.verifyAsync(token, {
+          secret: JWT_SECRET,
+        })) as TokenData;
+        await this.checkUser(playload.sub);
         // @ts-ignore 将解析出的token保存在上下文
-        request.user = playload
-        return next.handle()
+        request.user = playload;
+        return next.handle();
       } catch (error: any) {
-        throw new UnauthorizedException(error.toString ? error.toString() : 'token不合法!')
+        throw new UnauthorizedException(
+          error.toString ? error.toString() : "token不合法!"
+        );
       }
     } else {
-      return next.handle()
+      return next.handle();
     }
   }
   async checkUser(uid: number) {
-    const user = await this.userModel.findByPk(uid)
+    const user = await this.userModel.findByPk(uid);
     if (user === null) {
-      throw new UnauthorizedException('此用户id不存在!')
+      throw new UnauthorizedException("此用户id不存在!");
     } else {
       if (user.role !== Roles.User) {
-        throw new ForbiddenException('无权访问!')
+        throw new ForbiddenException("无权访问!");
       }
     }
   }
   getToken(req: Request) {
-    const authorization = req.headers.authorization
+    const authorization = req.headers.authorization;
     if (authorization === undefined) {
-      return undefined
+      return undefined;
     } else {
-      const [type, token] = authorization.split(' ')
-      if (type === 'Bearer') {
-        return token
+      const [type, token] = authorization.split(" ");
+      if (type === "Bearer") {
+        return token;
       } else {
-        throw new UnauthorizedException('token不合法!')
+        throw new UnauthorizedException("token不合法!");
       }
     }
   }
 }
 ```
 
-#### 12.可选token解析的参数装饰
+#### 12.可选 token 解析的参数装饰
 
-​	有时候我们需要登录用户和未登录用户展示不同内容时，需要解析token中的数据，若未登录(无token)就不解析数据，登录了就解析token数据。
+有时候我们需要登录用户和未登录用户展示不同内容时，需要解析 token 中的数据，若未登录(无 token)就不解析数据，登录了就解析 token 数据。
 
 ```ts
-import { InternalServerErrorException, createParamDecorator } from "@nestjs/common";
+import {
+  InternalServerErrorException,
+  createParamDecorator,
+} from "@nestjs/common";
 import { TokenData, TokenKey } from "../../types/token";
 import { ExecutionContextHost } from "@nestjs/core/helpers/execution-context-host";
 
 export const TokenOptional = createParamDecorator(
   (data: TokenKey, input: ExecutionContextHost) => {
-    const request = input.switchToHttp().getRequest()
-    const playload = request.user as TokenData
+    const request = input.switchToHttp().getRequest();
+    const playload = request.user as TokenData;
     if (playload === undefined) {
       // 未登录用户
-      return undefined
+      return undefined;
     } else {
       // 登录用户
       if (data === undefined) {
         // 未指定属性值
-        return playload
+        return playload;
       } else {
-        const value = playload[data]
+        const value = playload[data];
         if (value === undefined) {
-          throw new InternalServerErrorException(`token中没有该属性:${data}`)
+          throw new InternalServerErrorException(`token中没有该属性:${data}`);
         } else {
-          return value
+          return value;
         }
       }
     }
   }
-)
+);
 ```
-
-
 
 ### 三、auth 模块
 
- auth 模块主要是做登录、注册和一些需要角色权限的操作。auth 模块需要导入 user 模块，就能直接注册 user 模块所有内容了（路由也能注册）。
+auth 模块主要是做登录、注册和一些需要角色权限的操作。auth 模块需要导入 user 模块，就能直接注册 user 模块所有内容了（路由也能注册）。
 
 接口：登录、注册、修改用户信息
 
@@ -1251,23 +1309,23 @@ export const TokenOptional = createParamDecorator(
 
 ##### 登录
 
- 调用 userService 查询用户名是否存在，再解密密码，校验密码和请求体中的密码是否一致，从而下发 token
+调用 userService 查询用户名是否存在，再解密密码，校验密码和请求体中的密码是否一致，从而下发 token
 
 ##### 注册
 
- 调用 userService 层，查询用户名是否存在，加密密码，创建用户。
+调用 userService 层，查询用户名是否存在，加密密码，创建用户。
 
 ##### 修改指定用户的全部信息
 
- 分别调用 userService 的修改用户基本信息和用户密码。
+分别调用 userService 的修改用户基本信息和用户密码。
 
-##### 超级管理员下发Admin账户
+##### 超级管理员下发 Admin 账户
 
-​	超级管理员可以创建Admin角色的账户，通过守卫只允许超级管理员访问该接口。
+超级管理员可以创建 Admin 角色的账户，通过守卫只允许超级管理员访问该接口。
 
 ##### 超级管理员获取所有用户信息
 
-​	获取所有用户信息
+获取所有用户信息
 
 ##### 源代码
 
@@ -1286,6 +1344,7 @@ import { PASSWORD_SECRET } from "../../config";
 import { JwtService } from "@nestjs/jwt";
 import { AuthUpdateDto } from "./dto/auth-update.dto";
 
+// Injectable装饰器可以在作为提供者后自动注入到当前模块的各自子模块中。
 @Injectable()
 export class AuthService {
   constructor(
@@ -1336,13 +1395,11 @@ export class AuthService {
 }
 ```
 
-
-
 #### 2.控制层
 
 ##### 登录
 
- 通过管道来校验请求体数据，进入服务层，查询用户名是否存在，存在就将加密的密码解密，再判断是否和传入的请求体中的 password 是否一致，一致就登录成功，下发 token。
+通过管道来校验请求体数据，进入服务层，查询用户名是否存在，存在就将加密的密码解密，再判断是否和传入的请求体中的 password 是否一致，一致就登录成功，下发 token。
 
 ```ts
   /**
@@ -1372,7 +1429,7 @@ export class AuthService {
 
 ##### 注册
 
- 注册先通过中间件管道解析和校验请求体数据，成功就进入服务层，查询用户名是否已经存在了，未存在就创建一个角色为 user 的用户，密码使用 aes 对称加密。
+注册先通过中间件管道解析和校验请求体数据，成功就进入服务层，查询用户名是否已经存在了，未存在就创建一个角色为 user 的用户，密码使用 aes 对称加密。
 
 ```ts
   /**
@@ -1385,7 +1442,7 @@ export class AuthService {
 
 ##### 修改指定用户信息
 
- 超级管理员可以随意修改所有用户的数据，注意修改密码时需要加密密码再保存到数据库中。
+超级管理员可以随意修改所有用户的数据，注意修改密码时需要加密密码再保存到数据库中。
 
 ```ts
   /**
@@ -1402,12 +1459,22 @@ export class AuthService {
 
 ##### 下发管理员账号
 
-​	超级管理员可以注册一个管理员账户
+超级管理员可以注册一个管理员账户
 
 ##### 源代码
 
 ```ts
-import { Body, Controller, Get, Put, Param, ParseIntPipe, Post, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Put,
+  Param,
+  ParseIntPipe,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import { ValidationPipe } from "../../common/pipe";
 import { AuthRegisterDto } from "./dto/auth-register.dto";
 import { AuthService } from "./auth.service";
@@ -1421,50 +1488,53 @@ import { Role } from "../../common/decorator/role.decorator";
 import { Roles } from "./role";
 import { AuthRegiterAdminDto } from "./dto/auth-register-admin.dto";
 
-@Controller('auth')
+@Controller("auth")
 export class AuthController {
   constructor(
     // 注入auth服务层 不需要使用Inject来注入，因为AuthService在模块中已经作为提供者了
     private authService: AuthService
-  ) { }
+  ) {}
 
   // 注册一个普通用户
-  @Post('register')
+  @Post("register")
   async register(@Body(new ValidationPipe()) authRegisterDto: AuthRegisterDto) {
-    await this.authService.register(authRegisterDto)
-    return null
+    await this.authService.register(authRegisterDto);
+    return null;
   }
 
   // 登录
-  @Post('login')
+  @Post("login")
   async login(@Body(new ValidationPipe()) authLoginDto: AuthLoginDto) {
-    return await this.authService.login(authLoginDto)
+    return await this.authService.login(authLoginDto);
   }
 
   // 超级管理员更新用户信息
   @Role(Roles.SuperAdmin)
   @UseGuards(AuthGuard, RoleGuard)
-  @Put('update/:uid')
-  async updateUser(@Param('uid', ParseIntPipe) uid: number, @Body(new ValidationPipe()) authUpdateDto: AuthUpdateDto) {
-    await this.authService.updateUser(uid, authUpdateDto)
-    return '更新用户信息成功!'
+  @Put("update/:uid")
+  async updateUser(
+    @Param("uid", ParseIntPipe) uid: number,
+    @Body(new ValidationPipe()) authUpdateDto: AuthUpdateDto
+  ) {
+    await this.authService.updateUser(uid, authUpdateDto);
+    return "更新用户信息成功!";
   }
   // 解析token
   @UseGuards(AuthGuard)
-  @Get('token')
+  @Get("token")
   token(@Req() req: Request, @Token() token: TokenData) {
     // @ts-ignore
-    return req.user
+    return req.user;
   }
   // 超级管理员注册账户
   @Role(Roles.SuperAdmin)
   @UseGuards(AuthGuard, RoleGuard)
-  @Post('register/admin')
+  @Post("register/admin")
   async registerAdmin(
     @Body(new ValidationPipe()) authRegiterAdminDto: AuthRegiterAdminDto
   ) {
-    await this.authService.registerAdmin(authRegiterAdminDto)
-    return null
+    await this.authService.registerAdmin(authRegiterAdminDto);
+    return null;
   }
 }
 ```
@@ -1510,7 +1580,7 @@ export class AuthModule implements NestModule {
 
 ### 四、User 模块
 
- user 模块主要负责对 user 的增删改查。
+user 模块主要负责对 user 的增删改查。
 
 提供的服务：增加用户、修改用户基本信息、修改用户密码
 
@@ -1588,7 +1658,7 @@ export const databaseProvider: Provider[] = [
 
 #### 2.user 模块的提供者
 
- user 模块的提供者主要是为了提供操作 DB 的模型
+user 模块的提供者主要是为了提供操作 DB 的模型
 
 ```ts
 import { Provider } from "@nestjs/common";
@@ -1620,19 +1690,19 @@ export class UserModule {}
 
 #### 3.控制层
 
- user 控制层主要负责用户信息查询、修改等功能。
+user 控制层主要负责用户信息查询、修改等功能。
 
 ##### 修改用户个人信息
 
- 该接口场景：用户登录后修改自己的个人信息（用户名和头像）,通过管道校验数据后，调用 service 层。
+该接口场景：用户登录后修改自己的个人信息（用户名和头像）,通过管道校验数据后，调用 service 层。
 
 ##### 修改用户密码
 
- 该接口场景：用户修改自己的密码，通过管道校验数据后，进入 service 层。
+该接口场景：用户修改自己的密码，通过管道校验数据后，进入 service 层。
 
 ##### 获取用户基本信息
 
- 该接口场景：用户登录后，查看该用户的基本信息，通过管道校验后，进入 service 层。
+该接口场景：用户登录后，查看该用户的基本信息，通过管道校验后，进入 service 层。
 
 ##### 源代码
 
@@ -1682,31 +1752,31 @@ export class UserController {
 
 #### 4.服务层
 
- user 服务层主要负责用户的增删改查。由于 auth 模块需要使用 user 服务层来操作 User 模型，所以需要 exports 用户服务层。
+user 服务层主要负责用户的增删改查。由于 auth 模块需要使用 user 服务层来操作 User 模型，所以需要 exports 用户服务层。
 
 ##### 查询用户名称
 
- 根据用户名称查询用户
+根据用户名称查询用户
 
 ##### 查询用户 id
 
- 根据主键查询用户
+根据主键查询用户
 
 ##### 修改用户信息
 
- 修改用户的基本信息
+修改用户的基本信息
 
 ##### 修改用户密码
 
- 修改用户密码，注意密码需要加密后保存到数据库
+修改用户密码，注意密码需要加密后保存到数据库
 
 ##### 创建用户
 
- 创建用户，需要检查用户名是否重复，还要注意密码需要加密后保存到数据库。
+创建用户，需要检查用户名是否重复，还要注意密码需要加密后保存到数据库。
 
 ##### 查看用户基本信息
 
- 通过数据库查询到该用户后，返回用数据。
+通过数据库查询到该用户后，返回用数据。
 
 ##### 源代码
 
@@ -1854,244 +1924,283 @@ import { UserService } from "./user.service";
 export class UserModule {}
 ```
 
-### 五、照片模块
+### 五、Photo 模块
 
 #### 1.模型
 
 ##### Photo
 
 ```ts
-import { Table, Model, Column, PrimaryKey, AutoIncrement, Comment, DataType, Length, ForeignKey, BelongsTo, NotNull, AllowNull, Default, BelongsToMany } from "sequelize-typescript";
+import {
+  Table,
+  Model,
+  Column,
+  PrimaryKey,
+  AutoIncrement,
+  Comment,
+  DataType,
+  Length,
+  ForeignKey,
+  BelongsTo,
+  NotNull,
+  AllowNull,
+  Default,
+  BelongsToMany,
+} from "sequelize-typescript";
 import { User } from "../../user/model/user.model";
 import { AuditStatusList } from "../../../types/photo";
 import { UserLikePhoto } from "./user-like-photo.model";
 import { UserCommentPhoto } from "./user-comment-photo";
 
 @Table({
-  tableName: 'photo'
+  tableName: "photo",
 })
-export class Photo extends Model<Photo>{
+export class Photo extends Model<Photo> {
   @PrimaryKey
   @AutoIncrement
-  @Comment('照片id')
+  @Comment("照片id")
   @Column
   pid: number;
 
-  @Length({ min: 1, max: 20, msg: '标题长度为1-20位字符!' })
-  @Comment('照片标题')
+  @Length({ min: 1, max: 20, msg: "标题长度为1-20位字符!" })
+  @Comment("照片标题")
   @Column(DataType.STRING)
   title: string;
 
-  @Comment('照片的描述')
-  @Length({ min: 1, max: 255, msg: '描述长度为1-255位字符!' })
+  @Comment("照片的描述")
+  @Length({ min: 1, max: 255, msg: "描述长度为1-255位字符!" })
   @Column(DataType.TEXT)
   content: string;
 
-  @Comment('照片列表')
+  @Comment("照片列表")
   @Column(DataType.JSON)
   photos: string;
 
   @ForeignKey(() => User)
-  @Comment('照片作者id')
+  @Comment("照片作者id")
   @Column
   publish_uid: number;
 
   @ForeignKey(() => User)
-  @Comment('审核人id')
+  @Comment("审核人id")
   @Column
   audit_uid: number;
 
-  @Comment('审核时间')
+  @Comment("审核时间")
   @AllowNull
   @Column(DataType.DATE)
   audit_time: Date;
 
-  @Comment('审核描述')
-  @Length({ msg: '审核描述长度为1-255', min: 1, max: 255 })
+  @Comment("审核描述")
+  @Length({ msg: "审核描述长度为1-255", min: 1, max: 255 })
   @AllowNull
   @Column(DataType.STRING)
   audit_desc: string | null;
 
-  @Comment('审核状态，0未审核 1审核通过 2审核不通过')
+  @Comment("审核状态，0未审核 1审核通过 2审核不通过")
   @Default(0)
   @Column(DataType.TINYINT)
-  status: AuditStatusList
+  status: AuditStatusList;
 
-  @Comment('浏览量')
+  @Comment("浏览量")
   @Default(0)
   @Column(DataType.INTEGER)
   views: number;
 
   // 一个照片只能有一个作者,(声明publish_uid是外键)
-  @BelongsTo(() => User, 'publish_uid')
-  author: User
+  @BelongsTo(() => User, "publish_uid")
+  author: User;
 
   // 一个照片只能被一个管理员审核,(声明audit_uid是外键)
-  @BelongsTo(() => User, 'audit_uid')
-  auditor: User
+  @BelongsTo(() => User, "audit_uid")
+  auditor: User;
 
   // 一个照片可以被多个用户喜欢
-  @BelongsToMany(() => User, () => UserLikePhoto, 'pid')
+  @BelongsToMany(() => User, () => UserLikePhoto, "pid")
   // 关联名称，sequelize会以likeds创建操作User的函数
-  likeds: User[]
+  likeds: User[];
 
   // 一个照片有多个评论
-  @BelongsToMany(() => User, () => UserCommentPhoto, 'pid')
-  commentor:User[]
+  @BelongsToMany(() => User, () => UserCommentPhoto, "pid")
+  commentor: User[];
 
   /**
    * 获取喜欢该照片的用户
    */
-  declare getLikeds: () => Promise<User[]>
+  declare getLikeds: () => Promise<User[]>;
 }
 ```
 
 ##### UserLikePhoto
 
-​	用户点赞照片模型，多对多
+用户点赞照片模型，多对多
 
 ```ts
-import { ForeignKey, Table,Model } from "sequelize-typescript";
+import { ForeignKey, Table, Model } from "sequelize-typescript";
 import { User } from "../../user/model/user.model";
 import { Photo } from "./photo.model";
 
 @Table({
-  tableName:'user_like_photo'
+  tableName: "user_like_photo",
 })
 export class UserLikePhoto extends Model<UserLikePhoto> {
   @ForeignKey(() => User)
   uid: number;
-  
+
   @ForeignKey(() => Photo)
   pid: number;
-
 }
 ```
 
 ##### UserCommentPhoto
 
-​	一个照片有多个用户评论，一个用户可以评论多个照片，多对多
+一个照片有多个用户评论，一个用户可以评论多个照片，多对多
 
 ```ts
-import { Column, ForeignKey, Table, Comment, DataType, Length, Model, BelongsToMany, PrimaryKey } from "sequelize-typescript";
+import {
+  Column,
+  ForeignKey,
+  Table,
+  Comment,
+  DataType,
+  Length,
+  Model,
+  BelongsToMany,
+  PrimaryKey,
+} from "sequelize-typescript";
 import { User } from "../../user/model/user.model";
 import { Photo } from "./photo.model";
 import { UserLikeComment } from "./user-like-comment.model";
 
-@Table({ tableName: 'user_comment_photo' })
+@Table({ tableName: "user_comment_photo" })
 export class UserCommentPhoto extends Model<UserCommentPhoto> {
-
-  @Comment('评论的id')
+  @Comment("评论的id")
   @PrimaryKey
   @Column
   cid: number;
 
-  @Comment('发布评论的用户')
+  @Comment("发布评论的用户")
   @ForeignKey(() => User)
   @Column
   uid: number;
 
-  @Comment('评论的哪个照片')
+  @Comment("评论的哪个照片")
   @ForeignKey(() => Photo)
   @Column
-  pid: number
+  pid: number;
 
-  @Comment('评论内容')
-  @Length({ min: 1, max: 255, msg: '评论内容长度为1-255位!' })
+  @Comment("评论内容")
+  @Length({ min: 1, max: 255, msg: "评论内容长度为1-255位!" })
   @Column(DataType.STRING)
   content: string;
 
   // 一个评论可以被多个用户点赞
-  @BelongsToMany(() => User, () => UserLikeComment, 'cid')
-  likedUser: User[]
+  @BelongsToMany(() => User, () => UserLikeComment, "cid")
+  likedUser: User[];
 }
 ```
 
 ##### UserLikeComment
 
-​	用户可以点赞多个评论，一个评论可以被多个用户点赞，多对多
+用户可以点赞多个评论，一个评论可以被多个用户点赞，多对多
 
 ```ts
-import { Column, Comment, ForeignKey, Model, Table } from "sequelize-typescript";
+import {
+  Column,
+  Comment,
+  ForeignKey,
+  Model,
+  Table,
+} from "sequelize-typescript";
 import { User } from "../../user/model/user.model";
 import { UserCommentPhoto } from "./user-comment-photo";
 
-@Table({ tableName: 'user_like_comment' })
+@Table({ tableName: "user_like_comment" })
 export class UserLikeComment extends Model<UserLikeComment> {
   @ForeignKey(() => User)
-  @Comment('点赞者')
+  @Comment("点赞者")
   @Column
   uid: number;
 
-  @Comment('点赞的目标评论')
+  @Comment("点赞的目标评论")
   @ForeignKey(() => UserCommentPhoto)
   @Column
   cid: number;
 }
 ```
 
-
-
-##### User表需要更新与 Photo 的关系
+##### User 表需要更新与 Photo 的关系
 
 ```ts
-import { Table, Model, Column, PrimaryKey, Comment, DataType, AutoIncrement, Length, Default, HasMany, BelongsTo, BelongsToMany } from "sequelize-typescript";
+import {
+  Table,
+  Model,
+  Column,
+  PrimaryKey,
+  Comment,
+  DataType,
+  AutoIncrement,
+  Length,
+  Default,
+  HasMany,
+  BelongsTo,
+  BelongsToMany,
+} from "sequelize-typescript";
 import { Role, Roles, roles } from "../../auth/role";
 import { Photo } from "../../photo/model/photo.model";
 import { UserLikePhoto } from "../../photo/model/user-like-photo.model";
 import { UserCommentPhoto } from "../../photo/model/user-comment-photo";
 import { UserLikeComment } from "../../photo/model/user-like-comment.model";
 @Table({
-  tableName: 'user'
+  tableName: "user",
 })
-export class User extends Model<User>{
-
-  @Comment('账户id')
+export class User extends Model<User> {
+  @Comment("账户id")
   @PrimaryKey
   @AutoIncrement
   @Column
   uid: number;
 
-  @Comment('账户名称')
+  @Comment("账户名称")
   @Column(DataType.STRING)
   username: string;
 
-  @Comment('账户密码')
+  @Comment("账户密码")
   @Column(DataType.STRING)
   password: string;
 
   @Length({ max: 512 })
-  @Comment('账户头像')
+  @Comment("账户头像")
   @Column(DataType.STRING)
   avatar: string;
 
-  @Comment('用户角色')
+  @Comment("用户角色")
   @Column(DataType.ENUM(...roles))
   // @Default(Roles.User)
-  role: Role
+  role: Role;
 
   // 一个作者有多个照片 (这样设置后，publish_id会作为Photo表的外键，引用User表的uid，默认引用主键)
-  @HasMany(() => Photo, 'publish_uid')
-  authorPhotos: Photo[]
+  @HasMany(() => Photo, "publish_uid")
+  authorPhotos: Photo[];
 
   // 一个审核可以审核多个照片 (这样设置后，audit_uid会作为Photo表的外键，引用User表的uid，自定义指定引用User的uid字段)
   @HasMany(() => Photo, {
-    sourceKey: 'uid',
-    foreignKey: 'audit_uid'
+    sourceKey: "uid",
+    foreignKey: "audit_uid",
   })
-  auditPhotos: Photo[]
+  auditPhotos: Photo[];
 
   // 一个用户可以喜欢多个照片
-  @BelongsToMany(() => Photo, () => UserLikePhoto, 'uid')
-  likePhotos: Photo[]
+  @BelongsToMany(() => Photo, () => UserLikePhoto, "uid")
+  likePhotos: Photo[];
 
   // 一个用户可以评论多个照片
-  @BelongsToMany(() => Photo, () => UserCommentPhoto, 'uid')
-  commentedPhotos: Photo[]
+  @BelongsToMany(() => Photo, () => UserCommentPhoto, "uid")
+  commentedPhotos: Photo[];
 
   // 一个用户可以点赞多个评论
-  @BelongsToMany(() => UserCommentPhoto, () => UserLikeComment, 'uid')
-  likedComments: UserCommentPhoto[]
+  @BelongsToMany(() => UserCommentPhoto, () => UserLikeComment, "uid")
+  likedComments: UserCommentPhoto[];
 }
 ```
 
@@ -2113,9 +2222,9 @@ export const photoProvider: Provider[] = [
 
 ##### 发布照片
 
- 通过管道中间件解析和校验请求体数据，并通过 SetMeta 来设置路由元数据，该接口只能被 User 角色访问，再通过 AuthGuards 判断用户身份是否合法，通过 RoleGuards 来判断用户的角色是否可以访问该接口。在路由处理函数中判断下照片列表的类型和长度，最终调用 service 层创建照片。
+通过管道中间件解析和校验请求体数据，并通过 SetMeta 来设置路由元数据，该接口只能被 User 角色访问，再通过 AuthGuards 判断用户身份是否合法，通过 RoleGuards 来判断用户的角色是否可以访问该接口。在路由处理函数中判断下照片列表的类型和长度，最终调用 service 层创建照片。
 
-​	对于照片列表字段，需要遍历文件列表，把文件名称中的图片大小解析出来，解析成一个对象 ，保存在数据库中，这样方便前端直接获取图片尺寸。
+对于照片列表字段，需要遍历文件列表，把文件名称中的图片大小解析出来，解析成一个对象 ，保存在数据库中，这样方便前端直接获取图片尺寸。
 
 ```json
 {
@@ -2127,69 +2236,65 @@ export const photoProvider: Provider[] = [
 
 ##### 审核照片
 
- 用户发布的照片需要被审核才能被公开显示出来。通过 SetMetaData 来设置路由元数据，设置该接口可以被哪些角色访问（Admin、SuperAdmin），通过 AuthGuard 拦截并解析 token，通过 RoleGuard 来拦截非法的角色访问接口，通过管道解析 token、解析路径参数、解析校验请求体数据，最终调用 service 层。
+用户发布的照片需要被审核才能被公开显示出来。通过 SetMetaData 来设置路由元数据，设置该接口可以被哪些角色访问（Admin、SuperAdmin），通过 AuthGuard 拦截并解析 token，通过 RoleGuard 来拦截非法的角色访问接口，通过管道解析 token、解析路径参数、解析校验请求体数据，最终调用 service 层。
 
-##### 浏览照片列表(中间件解析token ，写得太炸裂了，代码太耦合了)
+##### 浏览照片列表(中间件解析 token ，写得太炸裂了，代码太耦合了)
 
-​	根据角色和status来控制不同角色能够查看的内容是不一样的。若是角色User，则只能查看**自己全部状态的作品**和**他人已经审核通过的作品**，若是未登录用户则**只能查看他人已经审核通过的作品**，管理员和超级管理员可以**查看所有状态的作品。**若浏览的不是User角色的照片，提示未找到的信息，因为只有User才能发送照片。
+根据角色和 status 来控制不同角色能够查看的内容是不一样的。若是角色 User，则只能查看**自己全部状态的作品**和**他人已经审核通过的作品**，若是未登录用户则**只能查看他人已经审核通过的作品**，管理员和超级管理员可以**查看所有状态的作品。**若浏览的不是 User 角色的照片，提示未找到的信息，因为只有 User 才能发送照片。
 
-​	若status为undefined（访问该用户的所有照片），则只有超级管理员和管理员才能访问，若是User，必须是查看自己的照片才能访问。
+若 status 为 undefined（访问该用户的所有照片），则只有超级管理员和管理员才能访问，若是 User，必须是查看自己的照片才能访问。
 
-​	若调用该接口的是User角色且status=1，还需要查询当前每个照片被点赞的状态，以及点赞数量。
+若调用该接口的是 User 角色且 status=1，还需要查询当前每个照片被点赞的状态，以及点赞数量。
 
 ##### 点赞照片
 
-​	参数装饰器解析路径参数pid，下发给服务层，**注意，只有审核通过的照片才能被点赞!!!**
+参数装饰器解析路径参数 pid，下发给服务层，**注意，只有审核通过的照片才能被点赞!!!**
 
 ##### 取消点赞照片
 
-​	参数装饰器解析路径参数pid，下发给服务层,注意，**只有审核通过的照片才能被取消点赞!!!**
+参数装饰器解析路径参数 pid，下发给服务层,注意，**只有审核通过的照片才能被取消点赞!!!**
 
 ##### 管理员获取照片列表
 
-​	管理员才能调用该接口，获取用户的照片列表，通过uid、status来指定获取某个用户、某个状态的照片列表。
+管理员才能调用该接口，获取用户的照片列表，通过 uid、status 来指定获取某个用户、某个状态的照片列表。
 
-##### User获取照片列表
+##### User 获取照片列表
 
-​	User才能调用该接口，User自身可以查看自己所有状态照片，查看别人的照片只能查看审核通过的，未登录只能查看别人审核通过的照片
+User 才能调用该接口，User 自身可以查看自己所有状态照片，查看别人的照片只能查看审核通过的，未登录只能查看别人审核通过的照片
 
-##### User查看喜欢的照片
+##### User 查看喜欢的照片
 
 ???
 
-##### User发布照片的评论
+##### User 发布照片的评论
 
 **注意，只有审核通过的照片才能被评论!!**
 
-##### User点赞评论
+##### User 点赞评论
 
+##### User 取消点赞评论
 
+##### User 浏览照片上报
 
-##### User取消点赞评论
-
-
-
-##### User浏览照片上报
-
-​	User浏览照片时可以上报数据，增加照片的浏览量。注意，只有审核通过的才能被上报
+User 浏览照片时可以上报数据，增加照片的浏览量。注意，只有审核通过的才能被上报
 
 ##### 查看照片评论
 
-​	只有给审核通过的照片id才能访问此接口，查询某个照片的评论，遍历评论查询他们被点赞数量以及当前用户对其的点赞状态。管理员和user都可以访问该接口
+只有给审核通过的照片 id 才能访问此接口，查询某个照片的评论，遍历评论查询他们被点赞数量以及当前用户对其的点赞状态。管理员和 user 都可以访问该接口
 
 #### 4.服务层
 
 ##### 创建照片
 
- 创建照片，直接插入记录
+创建照片，直接插入记录
 
 ##### 审核照片
 
- 审核照片前，需要检查当前照片是否被审核过了，未被审核则将当前审核信息记录在表中。
+审核照片前，需要检查当前照片是否被审核过了，未被审核则将当前审核信息记录在表中。
 
 ##### 浏览用户发送的照片列表（废弃）
 
-​	该接口所有角色都能访问，不过不同角色可以访问的数据也是不同的。
+该接口所有角色都能访问，不过不同角色可以访问的数据也是不同的。
 
 未登录用户：只能查看他人审核发布的照片
 
@@ -2199,19 +2304,19 @@ export const photoProvider: Provider[] = [
 
 ##### 点赞照片
 
-​	点赞照片前先查询照片是否存在，用户是否已经点过赞了。
+点赞照片前先查询照片是否存在，用户是否已经点过赞了。
 
 ##### 取消点赞照片
 
-​	取消点赞照片前先查询照片是否存在，用户是否点过赞了。
+取消点赞照片前先查询照片是否存在，用户是否点过赞了。
 
 ##### 管理员获取照片列表
 
-​	根据起始偏移量、长度、查询条件获取数据，返回给控制层
+根据起始偏移量、长度、查询条件获取数据，返回给控制层
 
-##### User和未登录用户获取照片
+##### User 和未登录用户获取照片
 
-​	若User访问自己的照片允许；User、游客只能访问别人审核通过的照片
+若 User 访问自己的照片允许；User、游客只能访问别人审核通过的照片
 
 5.模块
 
@@ -2228,90 +2333,320 @@ import { PhotoController } from "./photo.controller";
 export class PhotoModule {}
 ```
 
-### 六、文件模块
+### 六、File 模块
 
-文件上传通过Nest集成的Multer库来完成
+文件上传通过 Nest 集成的 Multer 库来完成
 
 ```ts
-import { MulterModule } from '@nestjs/platform-express'
+import { MulterModule } from "@nestjs/platform-express";
 ```
 
-#### 1.照片上传
+#### controller
 
-​	上传的照片不保存在数据库中，保存到本地磁盘中，再通过中间件挂载照片资源。上传照片成功后返回资源地址。在上传图片时，需要把图片尺寸也保持到文件名称当中，方便前端处理图片。
+上传的照片不保存在数据库中，保存到本地磁盘中，再通过中间件挂载照片资源。上传照片成功后返回资源地址。在上传图片时，需要把图片尺寸也保持到文件名称当中，方便前端处理图片。
+
+​ 文件模块包含了上传`照片`、`头像`，分了两个文件夹来保存资源，方便区分
 
 ```ts
-import { Controller, ParseFilePipe, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
+import {
+  BadRequestException,
+  Controller,
+  InternalServerErrorException,
+  ParseFilePipe,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { FileUploadPhotoDto } from "./dto/file-upload-photo.dto";
-import crypto from 'crypto'
-import path from 'path'
-import fs from 'fs'
-import sizeOf from 'image-size'
+import crypto from "crypto";
+import path from "path";
+import fs from "fs";
+import sizeOf from "image-size";
+import { AuthGuard } from "../../common/guard";
+import { FileUploadDto } from "./dto";
+import tips from "../../common/tips";
 
-@Controller('file')
+@Controller("file")
 export class FileController {
   /**
    * 上传单图片
    */
-  @UseInterceptors(FileInterceptor('photo'))
-  @Post('/upload/photo')
-  async uploadPhoto(@UploadedFile(ParseFilePipe) fileUploadPhotoDto: FileUploadPhotoDto) {
+  // 登录了才能上传图片!
+  @UseGuards(AuthGuard)
+  @UseInterceptors(FileInterceptor("photo"))
+  @Post("/upload/photo")
+  async uploadPhoto(
+    @UploadedFile(ParseFilePipe) fileUploadPhotoDto: FileUploadDto<"photo">
+  ) {
+    if (!fileUploadPhotoDto.mimetype.includes("image")) {
+      throw new BadRequestException(tips.pleaseUploadImg);
+    }
     // 静态资源根路径
-    const rootPath = path.resolve('./src/static')
+    const rootPath = path.resolve("./src/static");
 
     // 校验静态资源文件是否存在
     // 图片路径
-    const imgPath = path.resolve(rootPath, './img')
-    const rootFlag = fs.existsSync(rootPath)
+    const imgPath = path.resolve(rootPath, "./img");
+    const rootFlag = fs.existsSync(rootPath);
     if (!rootFlag) {
-      // 不存在根路径 
+      // 不存在根路径
       // 创建根路径文件夹
-      fs.mkdirSync(rootPath)
+      fs.mkdirSync(rootPath);
       // 创建img文件夹
-      fs.mkdirSync(imgPath)
+      fs.mkdirSync(imgPath);
     } else {
       // 存在根路径
-      const imgFlag = fs.existsSync(imgPath)
+      const imgFlag = fs.existsSync(imgPath);
       if (!imgFlag) {
         // 不存在img路径
-        fs.mkdirSync(imgPath)
+        fs.mkdirSync(imgPath);
       }
     }
     // 读取该图片的尺寸大小
-    const { height, width } = sizeOf(fileUploadPhotoDto.buffer)
+    const { height, width } = sizeOf(fileUploadPhotoDto.buffer);
     // 生成新文件名称
-    const newName = `${crypto.randomUUID({ disableEntropyCache: true })}_w${width}_h${height}_${fileUploadPhotoDto.originalname}`
+    let newName = `${crypto.randomUUID({
+      disableEntropyCache: true,
+    })}_w${width}_h${height}_${fileUploadPhotoDto.originalname}`;
+    // 清空文件名称的空格
+    while (newName.includes(" ")) {
+      newName = newName.replace(" ", "_");
+    }
     // 新文件路径
-    const filePath = path.resolve(imgPath, `./${newName}`)
-    // 保存文件
-    await new Promise<void>((resolve, reject) => {
-
-      // 创建文件流
-      const writeStream = fs.createWriteStream(filePath)
-      // 写入数据
-      writeStream.write(fileUploadPhotoDto.buffer, (err) => {
-        // 本次写入是否成功?
-        if (err) {
-          reject()
-        } else {
-          resolve()
-        }
-      })
-
-    })
+    const filePath = path.resolve(imgPath, `./${newName}`);
+    try {
+      // 保存文件
+      await new Promise<void>((resolve, reject) => {
+        // 创建文件流
+        const writeStream = fs.createWriteStream(filePath);
+        // 写入数据
+        writeStream.write(fileUploadPhotoDto.buffer, (err) => {
+          // 本次写入是否成功?
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      });
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
 
     // 返回图片链接地址
-    return `/static/img/${newName}`
+    return `/static/img/${newName}`;
+  }
+  /**
+   * 上传头像
+   */
+  @UseGuards(AuthGuard)
+  @UseInterceptors(FileInterceptor("avatar"))
+  @Post("/upload/avatar")
+  async uploadAvatar(
+    @UploadedFile(ParseFilePipe) fileUploadDto: FileUploadDto<"avatar">
+  ) {
+    if (!fileUploadDto.mimetype.includes("image")) {
+      throw new BadRequestException(tips.pleaseUploadImg);
+    }
+    // 静态资源文件夹根路径
+    const rootPath = path.resolve("./src/static");
+    // 头像静态资源根路径
+    const avatarPath = path.resolve("./src/static/avatar");
+
+    if (!fs.existsSync(rootPath)) {
+      // 不存在static文件夹
+      fs.mkdirSync(rootPath);
+      fs.mkdirSync(avatarPath);
+    }
+
+    if (!fs.existsSync(avatarPath)) {
+      // 不存在avatar文件夹
+      fs.mkdirSync(avatarPath);
+    }
+
+    // 生成新文件的名称
+    const fileName = `${crypto.randomUUID({
+      disableEntropyCache: true,
+    })}_${fileUploadDto.originalname}`;
+
+    // 新文件的路径
+    const filePath = path.resolve(avatarPath, `./${fileName}`);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        fs.writeFile(filePath, fileUploadDto.buffer, (err) => {
+          if (err) reject(err);
+          resolve();
+        });
+      });
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+
+    return `/static/avatar/${fileName}`;
   }
 }
 ```
 
+### 七、搜索模块
 
+​ 用户可以对数据进行检索。
 
-#### 5.模块
+#### Controller
 
+##### Photo 模块
 
+​ 搜索照片的模块，通过角色来分成了两个接口。
+
+```ts
+import { Controller, Get, Query, UseGuards } from "@nestjs/common";
+import { Role, TokenOptional } from "../../../common/decorator";
+import {
+  DescPipe,
+  LimitPipe,
+  OffsetPipe,
+  StatusPipe,
+} from "../../../common/pipe";
+import { AuditStatus } from "../../../types/photo";
+import { SearchPhotoService } from "../service";
+import { AuthGuard, RoleGuard } from "../../../common/guard";
+import { Roles } from "../../auth/role";
+
+@Controller("search/photo")
+export class SearchPhotoController {
+  constructor(private searchPhotoService: SearchPhotoService) {}
+  // User搜索照片接口
+  @Get("/user")
+  async userSearchPhoto(
+    @TokenOptional("sub") currentUid: number | undefined,
+    @Query("keywords") keywords: string,
+    @Query("limit", LimitPipe) limit: number,
+    @Query("offset", OffsetPipe) offset: number,
+    @Query("desc", DescPipe) desc: boolean
+  ) {
+    return await this.searchPhotoService.userSearchPhoto(
+      currentUid,
+      keywords,
+      offset,
+      limit,
+      desc
+    );
+  }
+  // 管理员搜索照片接口
+  @Role(Roles.SuperAdmin, Roles.Admin)
+  @UseGuards(AuthGuard, RoleGuard)
+  @Get("")
+  async searchPhoto(
+    @Query("keywords") keywords: string,
+    @Query("limit", LimitPipe) limit: number,
+    @Query("offset", OffsetPipe) offset: number,
+    @Query("desc", DescPipe) desc: boolean,
+    @Query("status", StatusPipe) status: AuditStatus | undefined
+  ) {
+    return await this.searchPhotoService.searchPhoto(
+      keywords,
+      offset,
+      limit,
+      desc,
+      status
+    );
+  }
+}
+```
+
+#### Service
+
+##### Photo 模块
+
+`Injectable`装饰器可以将该服务自动注入到`Search模块`中的子模块去，不需要`Inject`即可自动注入
+
+```ts
+import { Injectable } from "@nestjs/common";
+import { PhotoService } from "../../photo/service";
+import { AuditStatusList } from "../../../types/photo";
+
+/**
+ * 搜索照片Service层
+ */
+@Injectable()
+export class SearchPhotoService {
+  constructor(private photoService: PhotoService) {}
+  /**
+   * User搜索照片(搜索的照片只能是通过的照片)
+   */
+  async userSearchPhoto(
+    currentUid: number | undefined,
+    keywords: string,
+    offset: number,
+    limit: number,
+    desc: boolean
+  ) {
+    const { list: photoList, total } = await this.photoService.searchPhoto(
+      keywords,
+      offset,
+      limit,
+      desc,
+      AuditStatusList.Pass
+    );
+
+    const list = await this.photoService.getPhotosInfo(photoList, currentUid);
+
+    return {
+      list,
+      limit,
+      offset,
+      desc,
+      total,
+      has_more: total > offset + limit,
+    };
+  }
+  /**
+   * 管理员搜索照片
+   */
+  async searchPhoto(
+    keywords: string,
+    offset: number,
+    limit: number,
+    desc: boolean,
+    status: AuditStatusList | undefined
+  ) {
+    const { list: photoList, total } = await this.photoService.searchPhoto(
+      keywords,
+      offset,
+      limit,
+      desc,
+      status
+    );
+    const list = photoList.map((photo) => this.photoService.formatPhoto(photo));
+    return {
+      list,
+      total,
+      offset,
+      limit,
+      status,
+      desc,
+    };
+  }
+}
+```
+
+#### Modules
+
+```ts
+import { Module } from "@nestjs/common";
+import { SearchPhotoController } from "./controller";
+import { PhotoModule } from "../photo/photo.module";
+import { SearchPhotoService } from "./service";
+
+@Module({
+  // 导入照片模块
+  imports: [PhotoModule],
+  controllers: [SearchPhotoController],
+  providers: [SearchPhotoService],
+})
+export class SearchModule {}
+```
 
 ### 加密
 

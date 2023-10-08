@@ -4,21 +4,19 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { User } from "./model/user.model";
-import { decrpty, encrpty } from "../../common/crypto";
-import { PASSWORD_SECRET } from "../../config";
-import { Role, Roles } from "../auth/role";
-import { UserCreateDto } from "./dto/user-create.dto";
-import { UserUpdateDto } from "./dto/user-update.dto";
 import { Op } from "sequelize";
+import { decrpty, encrpty } from "../../common/crypto";
 import tips from "../../common/tips";
-import { UserUpdatePasswordDto } from "./dto/user-update-password.dto";
+import { PASSWORD_SECRET } from "../../config";
+import { Role } from "../auth/role";
+import { UserCreateDto, UserUpdateDto, UserUpdatePasswordDto } from "./dto";
+import { User } from "./model/user.model";
 
 @Injectable()
 export class UserService {
   constructor(
     // 注入user模型
-    @Inject("UserModel") private userModel: typeof User
+    @Inject("UserModel") readonly userModel: typeof User
   ) {}
   /**
    * 创建用户
@@ -184,7 +182,11 @@ export class UserService {
    * @returns 用户列表
    */
   async getAccountList(limit: number, offset: number) {
-    return await this.userModel.findAndCountAll({ limit, offset });
+    return await this.userModel.findAndCountAll({
+      attributes: { exclude: ["password"] },
+      limit,
+      offset,
+    });
   }
   /**
    * 获取user基本信息，只要角色为user的 User管道必须要拦截非User角色的访问

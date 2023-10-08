@@ -1,16 +1,13 @@
-import { Body, Controller, Get, Put, Param, ParseIntPipe, Post, Req, UseGuards, Query } from "@nestjs/common";
-import { LimitPipe, OffsetPipe, ValidationPipe } from "../../common/pipe";
-import { AuthRegisterDto } from "./dto/auth-register.dto";
 import { AuthService } from "./auth.service";
-import { AuthLoginDto } from "./dto/auth-login.dto";
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
 import { Request } from "express";
-import { AuthGuard, RoleGuard } from "../../common/guard";
 import { Token } from "../../common/decorator";
-import { TokenData } from "../../types/token";
-import { AuthUpdateDto } from "./dto/auth-update.dto";
 import { Role } from "../../common/decorator/role.decorator";
+import { AuthGuard, RoleGuard } from "../../common/guard";
+import { LimitPipe, OffsetPipe, ValidationPipe } from "../../common/pipe";
+import { TokenData } from "../../types/token";
+import { AuthLoginDto, AuthRegisterDto, AuthRegiterAdminDto, AuthUpdateDto } from "./dto";
 import { Roles } from "./role";
-import { AuthRegiterAdminDto } from "./dto/auth-register-admin.dto";
 
 @Controller('auth')
 export class AuthController {

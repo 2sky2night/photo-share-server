@@ -1,10 +1,9 @@
+import { UserService } from "./user.service";
 import { Controller, Put, Body, UseGuards, Get, Param } from "@nestjs/common";
 import { UserPipe, ValidationPipe } from "../../common/pipe";
-import { UserUpdateDto } from "./dto/user-update.dto";
-import { UserService } from "./user.service";
+import { UserUpdateDto, UserUpdatePasswordDto } from "./dto";
 import { AuthGuard } from "../../common/guard";
 import { Token } from "../../common/decorator";
-import { UserUpdatePasswordDto } from "./dto/user-update-password.dto";
 
 @Controller('user')
 export class UserController {

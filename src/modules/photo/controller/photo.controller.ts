@@ -22,18 +22,18 @@ import {
   ValidationPipe,
   PhotoPipe,
   DescPipe,
+  NumListPipe,
+  StatusPipe,
 } from "../../../common/pipe";
-import { PhotoCreateDto } from "../dto/photo-create.dto";
+import { PhotoService } from "../service";
+import { PhotoCreateDto, PhotoAuditDto } from "../dto";
 import { AuthGuard, RoleGuard } from "../../../common/guard";
 import { Roles } from "../../auth/role";
 import { Token, Role, TokenOptional } from "../../../common/decorator";
-import { PhotoService } from "../service/photo.service";
-import { PhotoAuditDto } from "../dto/photo-audit.dto";
-import { AuditStatus } from "../../../types/photo";
-import { StatusPipe } from "../../../common/pipe/status.pipe";
-import { TokenData } from "../../../types/token";
-import { Request } from "express";
 import { UserInterceptor } from "../../../common/interceptor";
+import type { AuditStatus } from "../../../types/photo";
+import type { TokenData } from "../../../types/token";
+import type { Request } from "express";
 
 @Controller("photo")
 export class PhotoController {
@@ -209,5 +209,13 @@ export class PhotoController {
     @TokenOptional("sub") uid: number
   ) {
     return await this.photoService.getPhoto(pid, uid);
+  }
+  // 根据pid列表获取某些照片
+  @Get("/pids/list")
+  async getPhotos(
+    @TokenOptional("sub") uid: number,
+    @Query("pids", NumListPipe) pids: number[]
+  ) {
+    return await this.photoService.getPhotos(pids, uid);
   }
 }

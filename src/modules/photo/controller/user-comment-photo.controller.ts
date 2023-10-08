@@ -1,10 +1,10 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { AuthGuard, RoleGuard } from "../../../common/guard";
 import { Role, Token, TokenOptional } from "../../../common/decorator";
 import { Roles } from "../../auth/role";
 import { CommentPipe, DescPipe, LimitPipe, OffsetPipe, PhotoPassPipe, ValidationPipe } from "../../../common/pipe";
-import { CommentCreateDto } from "../dto/comment-create.dto";
-import { UserCommentPhotoService } from "../service/user-comment-photo.service";
+import { CommentCreateDto } from "../dto";
+import { UserCommentPhotoService } from "../service";
 
 @Controller('/photo/comment')
 export class UserCommentPhotoController {

@@ -15,7 +15,7 @@ import { Response } from "../../../common/response";
 import type { Response as ResType } from "express";
 import type { EventEmitter } from "node:events";
 import { randomUUID } from "crypto";
-import { PhotoAuditDto } from "../dto/photo-audit.dto";
+import { PhotoAuditDto } from "../dto";
 import tips from "../../../common/tips";
 
 @Controller("/photo/events")

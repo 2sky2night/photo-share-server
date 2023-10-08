@@ -13,7 +13,7 @@ export default {
   staticFileError: "读取静态资源出错!",
   oldPasswordError: "当前密码错误!",
   pleaseUploadImg: '请上传图片!',
-  unsubscribeNotFound:"还未订阅过推送频道!",
+  unsubscribeNotFound: "还未订阅过推送频道!",
   /**
    * @example `参数${name}缺失!`
    */

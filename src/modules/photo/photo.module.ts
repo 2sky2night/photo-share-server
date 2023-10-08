@@ -34,6 +34,7 @@ import { TokenParseMiddleware } from "../../common/middleware";
     UserCommentPhotoController,
     PhotoEventsController,
   ],
+  exports: [PhotoService, UserCommentPhotoService, UserModule],
 })
 export class PhotoModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

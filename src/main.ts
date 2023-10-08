@@ -9,9 +9,9 @@ async function appStart() {
   const app = await NestFactory.create(AppModule)
   // 静态图片资源
   app.use(StaticImgMiddleware)
-  // 注册捕获全部错误过滤器
+  // 注册捕获全部错误过滤器，该过滤器过滤所有错误，应该写在最上面
   app.useGlobalFilters(new InternalErrorFilter())
-  // 注册http请求错误过滤器
+  // 注册http请求错误过滤器,该过滤器捕获400-500的http错误
   app.useGlobalFilters(new HttpExceptionFilter())
   // 注册响应拦截器
   app.useGlobalInterceptors(new ResponseInterceptor())

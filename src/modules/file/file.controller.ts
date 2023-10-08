@@ -9,12 +9,12 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { FileUploadDto } from "./dto/file-upload-photo.dto";
 import crypto from "crypto";
 import path from "path";
 import fs from "fs";
 import sizeOf from "image-size";
 import { AuthGuard } from "../../common/guard";
+import { FileUploadDto } from "./dto";
 import tips from "../../common/tips";
 
 @Controller("file")
