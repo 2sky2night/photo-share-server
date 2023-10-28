@@ -12,8 +12,9 @@ export default {
   staticFileNotFound: "静态资源不存在!",
   staticFileError: "读取静态资源出错!",
   oldPasswordError: "当前密码错误!",
-  pleaseUploadImg: '请上传图片!',
+  pleaseUploadImg: "请上传图片!",
   unsubscribeNotFound: "还未订阅过推送频道!",
+  paramsError_:'参数错误',
   /**
    * @example `参数${name}缺失!`
    */
@@ -38,4 +39,8 @@ export default {
    * @example `未找到该${name}`
    */
   notFound: (name: string) => `未找到该${name}!`,
+  /**
+   * @example `该${name}还没有被删除`
+   */
+  notDeleteError: (name: string) => `该${name}还没有被删除!`,
 };

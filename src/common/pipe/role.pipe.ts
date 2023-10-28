@@ -3,7 +3,7 @@ import { Roles } from "../../modules/auth/role";
 import tips from "../tips";
 
 /**
- * 校验role，传入undefined，返回undefined
+ * 校验role，若传入undefined，返回undefined
  */
 export class RolePipe
   implements PipeTransform<string | undefined, Roles | undefined>

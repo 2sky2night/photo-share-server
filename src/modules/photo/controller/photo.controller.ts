@@ -12,7 +12,7 @@ import {
   UseInterceptors,
   Res,
 } from "@nestjs/common";
-import type { Response as ResType } from "express";
+import { Response as ResType, query } from "express";
 import { Response } from "../../../common/response";
 import {
   LimitPipe,
@@ -145,9 +145,16 @@ export class PhotoController {
     @Query("uid", IntOptionalPipe, UserOptionalPipe) uid: number | undefined,
     @Query("offset", OffsetPipe) offset: number,
     @Query("limit", LimitPipe) limit: number,
-    @Query("status", StatusPipe) status: AuditStatus | undefined
+    @Query("status", StatusPipe) status: AuditStatus | undefined,
+    @Query("desc", DescPipe) desc: boolean
   ) {
-    return await this.photoService.adminFindPhotos(uid, status, offset, limit);
+    return await this.photoService.adminFindPhotos(
+      uid,
+      status,
+      offset,
+      limit,
+      desc
+    );
   }
   /**
    * 用户获取照片

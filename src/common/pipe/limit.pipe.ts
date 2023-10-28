@@ -2,7 +2,7 @@ import { BadRequestException, PipeTransform } from "@nestjs/common";
 import tips from "../tips";
 
 /**
- * limit管道
+ * limit管道 （可选）
  */
 export class LimitPipe implements PipeTransform<string | undefined, number> {
   transform(value: string | undefined) {

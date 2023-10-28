@@ -2,7 +2,7 @@ import { BadRequestException, PipeTransform } from "@nestjs/common";
 import tips from "../tips";
 
 /**
- * offset管道
+ * offset管道 （可选）
  */
 export class OffsetPipe implements PipeTransform<string | undefined, number> {
   transform(value: string | undefined) {

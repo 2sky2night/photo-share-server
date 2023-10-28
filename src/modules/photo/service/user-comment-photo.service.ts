@@ -1,10 +1,16 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { UserCommentPhoto } from "../model/user-comment-photo";
 import { CommentCreateDto } from "../dto/comment-create.dto";
 import { UserLikeComment } from "../model/user-like-comment.model";
 import tips from "../../../common/tips";
 import { UserService } from "../../user/user.service";
 import { Roles } from "../../auth/role";
+import { Op } from "sequelize";
 
 @Injectable()
 export class UserCommentPhotoService {
@@ -57,6 +63,104 @@ export class UserCommentPhotoService {
       throw new BadRequestException(tips.removeLikeError("评论"));
     }
     await flag.destroy();
+  }
+  /**
+   * 是否有该评论
+   * @param cid 评论id
+   * @param hasDele 查询是否被删除的记录
+   */
+  async findComment(cid: number, hasDele = false) {
+    // 若hasDele会false，只查询没被删除的记录，为true查询所有记录
+    // paranoid为假，会查询所有的记录，为真查询没被删除的记录
+    return await this.UCPModel.findByPk(cid, { paranoid: !hasDele });
+  }
+  /**
+   * 删除评论
+   * @param cid
+   */
+  async removeComment(cid: number) {
+    const comment = await this.findComment(cid);
+    if (comment) {
+      await comment.destroy();
+    } else {
+      throw new NotFoundException(tips.notFound("评论"));
+    }
+  }
+  /**
+   * 恢复评论
+   * @param cid
+   */
+  async restoreComment(cid: number) {
+    const comment = await this.findComment(cid, true);
+    if (comment) {
+      if (comment.deletedAt) {
+        // 被删除过的评论
+        await comment.restore();
+      } else {
+        // 没被删除的评论
+        throw new BadRequestException(tips.notDeleteError("评论"));
+      }
+    } else {
+      throw new NotFoundException(tips.notFound("评论"));
+    }
+  }
+  /**
+   * 获取评论列表
+   * @param keywords 搜索关键词 （可选）
+   * @param pid 照片id （可选）
+   * @param uid 用户id （可选）
+   * @param isDele 查询所有记录、查询被删除的记录、查询没被删除的记录 （可选）
+   * @param limit 长度（可选）
+   * @param offset  偏移量（可选）
+   * @param desc 降序 （可选）
+   * @returns
+   */
+  async adminGetComment(
+    keywords: string | undefined,
+    pid: number | undefined,
+    uid: number | undefined,
+    isDele: boolean | undefined,
+    limit: number,
+    offset: number,
+    desc: boolean
+  ) {
+    const where: Record<string, any> = {};
+
+    // 筛选条件
+    if (keywords) {
+      where.content = {
+        [Op.like]: `%${keywords}%`,
+      };
+    }
+    if (pid !== undefined) {
+      where.pid = pid;
+    }
+    if (uid !== undefined) {
+      where.uid = uid;
+    }
+    if (isDele === true) {
+      // 只查询被删除的记录
+      where.deletedAt = {
+        [Op.not]: null,
+      };
+    }
+
+    const { rows, count } = await this.UCPModel.findAndCountAll({
+      where,
+      limit,
+      offset,
+      order: [["createdAt", desc ? "desc" : "asc"]],
+      paranoid: isDele === undefined ? false : !isDele,
+    });
+
+    return {
+      list: rows,
+      total: count,
+      limit,
+      offset,
+      desc,
+      has_more: count > limit + offset,
+    };
   }
   /**
    * 用户获取照片评论

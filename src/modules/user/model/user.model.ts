@@ -33,7 +33,7 @@ export class User extends Model<User>{
   // @Default(Roles.User)
   role: Role
 
-  // 一个作者有多个照片 (这样设置后，publish_id会作为Photo表的外键，引用User表的uid，默认引用主键)
+  // 一个作者有多个照片 (这样设置后，publish_uid会作为Photo表的外键，引用User表的uid，默认引用主键)
   @HasMany(() => Photo, 'publish_uid')
   authorPhotos: Photo[]
 

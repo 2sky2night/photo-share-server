@@ -8,7 +8,7 @@ import { Op } from "sequelize";
 import { decrpty, encrpty } from "../../common/crypto";
 import tips from "../../common/tips";
 import { PASSWORD_SECRET } from "../../config";
-import { Role } from "../auth/role";
+import { Role, Roles } from "../auth/role";
 import { UserCreateDto, UserUpdateDto, UserUpdatePasswordDto } from "./dto";
 import { User } from "./model/user.model";
 
@@ -21,6 +21,7 @@ export class UserService {
   /**
    * 创建用户
    * @param authRegisterDto 创建用户的数据
+   * @param role 创建用户时的角色
    */
   async createUser({ username, password }: UserCreateDto, role: Role) {
     // 查询用户名是否重复
@@ -179,14 +180,29 @@ export class UserService {
    * 获取账户列表
    * @param limit 长度
    * @param offset 偏移量
-   * @returns 用户列表
+   * @param desc 创建时间降序
+   * @param role 筛选类型
+   * @returns
    */
-  async getAccountList(limit: number, offset: number) {
-    return await this.userModel.findAndCountAll({
+  async getAccountList(
+    limit: number,
+    offset: number,
+    desc: boolean,
+    role: Roles | undefined
+  ): Promise<{ rows: User[]; count: number; desc: boolean }> {
+    const result = await this.userModel.findAndCountAll({
+      where:
+        role === undefined
+          ? {}
+          : {
+              role,
+            },
+      order: desc ? [["createdAt", "desc"]] : [["createdAt", "asc"]],
       attributes: { exclude: ["password"] },
       limit,
       offset,
     });
+    return { ...result, desc };
   }
   /**
    * 获取user基本信息，只要角色为user的 User管道必须要拦截非User角色的访问

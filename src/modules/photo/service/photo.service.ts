@@ -77,16 +77,19 @@ export class PhotoService {
    * @param stauts 指定状态
    * @param offset 起始偏移量
    * @param limit 获取多少数据
+   * @param desc 是否降序
    */
   async adminFindPhotos(
     uid: number | undefined,
     status: AuditStatus | undefined,
     offset: number,
-    limit: number
+    limit: number,
+    desc: boolean
   ) {
     // 照片列表
     const { rows, count } = await this.photoModel.findAndCountAll({
       where: removeUndefined({ publish_uid: uid, status }),
+      order: [["createdAt", desc ? "desc" : "asc"]],
       offset,
       limit,
     });
