@@ -12,3 +12,4 @@ export { NumListPipe } from "./num-list.pipe";
 export { StatusPipe } from "./status.pipe";
 export { RolePipe } from "./role.pipe";
 export { BooleanOptionPipe } from "./boolen-option.pipe";
+export { IntPipe } from "./int.pipe";

@@ -4,9 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { UserLikePhoto } from "../model/user-like-photo.model";
 import { PhotoService } from "./photo.service";
-import { Photo } from "../model/photo.model";
+import { Photo, UserLikePhoto } from "../model";
 import tips from "../../../common/tips";
 
 @Injectable()

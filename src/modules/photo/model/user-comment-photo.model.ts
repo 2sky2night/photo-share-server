@@ -21,27 +21,27 @@ export class UserCommentPhoto extends Model<UserCommentPhoto> {
   @PrimaryKey
   @AutoIncrement
   @Column
-  cid: number;
+  cid!: number;
 
   @Comment("发布评论的用户")
   @ForeignKey(() => User)
   @Column
-  uid: number;
+  uid!: number;
 
   @Comment("评论的哪个照片")
   @ForeignKey(() => Photo)
   @Column
-  pid: number;
+  pid!: number;
 
   @Comment("评论内容")
   @Length({ min: 1, max: 255, msg: "评论内容长度为1-255位!" })
   @Column(DataType.STRING)
-  content: string;
+  content!: string;
 
   // 一个评论可以被多个用户点赞
   @BelongsToMany(() => User, () => UserLikeComment, "cid")
-  likedUser: User[];
+  likedUser!: User[];
 
   @DeletedAt
-  deletedAt: Date;
+  deletedAt!: Date;
 }

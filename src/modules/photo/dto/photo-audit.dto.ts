@@ -6,7 +6,7 @@ export class PhotoAuditDto {
     Pass: AuditStatusList.Pass,
     NoPass: AuditStatusList.NoPass
   }, { message: '审核状态只能是1、2' })
-  status: AuditStatus
+  status!: AuditStatus
   
   @IsOptional()
   @Length(1, 255, { message: '审核描述长度为1-255' })

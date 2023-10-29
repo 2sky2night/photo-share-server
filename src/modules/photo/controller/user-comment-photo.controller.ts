@@ -1,11 +1,9 @@
 import {
   Body,
   Controller,
-  DefaultValuePipe,
   Delete,
   Get,
   Param,
-  ParseBoolPipe,
   ParseIntPipe,
   Post,
   Query,
@@ -19,6 +17,7 @@ import {
   CommentPipe,
   DescPipe,
   IntOptionalPipe,
+  IntPipe,
   LimitPipe,
   OffsetPipe,
   PhotoPassPipe,
@@ -37,7 +36,7 @@ export class UserCommentPhotoController {
   ) {}
   @Role(Roles.User)
   @UseGuards(AuthGuard, RoleGuard)
-  @Post("/:pid")
+  @Post("create/:pid")
   // 发送评论
   async createComment(
     @Param("pid", PhotoPassPipe) pid: number,
@@ -82,23 +81,23 @@ export class UserCommentPhotoController {
   // 删除评论，非User角色才可以访问该接口
   @Role(Roles.Admin, Roles.SuperAdmin)
   @UseGuards(AuthGuard, RoleGuard)
-  @Delete("/:cid")
-  async removeComment(@Param("cid", ParseIntPipe) cid: number) {
+  @Delete(":cid")
+  async removeComment(@Param("cid", new IntPipe("cid")) cid: number) {
     await this.UCPService.removeComment(cid);
     return null;
   }
   // 恢复评论
   @Role(Roles.SuperAdmin, Roles.Admin)
   @UseGuards(AuthGuard, RoleGuard)
-  @Post("/restore/:cid")
-  async restoreComment(@Param("cid", ParseIntPipe) cid: number) {
+  @Post("restore/:cid")
+  async restoreComment(@Param("cid", new IntPipe("cid")) cid: number) {
     await this.UCPService.restoreComment(cid);
     return null;
   }
   // 获取评论列表
   @Role(Roles.SuperAdmin, Roles.Admin)
   @UseGuards(AuthGuard, RoleGuard)
-  @Get("/all")
+  @Get("all")
   async adminGetComments(
     @Query("uid", IntOptionalPipe) uid: number | undefined,
     @Query("pid", IntOptionalPipe) pid: number | undefined,
@@ -118,5 +117,12 @@ export class UserCommentPhotoController {
       offset,
       desc
     );
+  }
+  // 获取某个评论(管理员调用)
+  @Role(Roles.SuperAdmin, Roles.Admin)
+  @UseGuards(AuthGuard, RoleGuard)
+  @Get(":cid")
+  async adminGetComment(@Param("cid", new IntPipe("cid")) cid: number) {
+    return await this.UCPService.getComment(cid);
   }
 }

@@ -13,10 +13,7 @@ import { removeUndefined } from "../../../utils/tools";
 import { Roles } from "../../auth/role";
 import { UserService } from "../../user/user.service";
 import { PhotoAuditDto } from "../dto";
-import { Photo } from "../model/photo.model";
-import { UserCommentPhoto } from "../model/user-comment-photo";
-import { UserLikePhoto } from "../model/user-like-photo.model";
-import { Op } from "sequelize";
+import { UserCommentPhoto, UserLikePhoto, Photo } from "../model";
 
 @Injectable()
 export class PhotoService {
@@ -575,5 +572,25 @@ export class PhotoService {
       throw new NotFoundException(tips.noExist("照片"));
     }
     return photo;
+  }
+  /**
+   * 获取照片列表
+   * @param limit 长度
+   * @param offset 偏移量
+   * @param desc 降序
+   */
+  async getPhotoList(limit: number, offset: number, desc: boolean) {
+    const { rows: list, count: total } = await this.photoModel.findAndCountAll({
+      limit,
+      offset,
+      order: [["createdAt", desc ? "desc" : "asc"]],
+    });
+    return {
+      list: list.map((item) => this.formatPhoto(item)),
+      limit,
+      offset,
+      desc,
+      has_more: total > limit + offset,
+    };
   }
 }

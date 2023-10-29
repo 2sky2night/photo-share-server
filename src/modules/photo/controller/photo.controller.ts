@@ -24,6 +24,7 @@ import {
   DescPipe,
   NumListPipe,
   StatusPipe,
+  IntPipe,
 } from "../../../common/pipe";
 import { PhotoService } from "../service";
 import { PhotoCreateDto, PhotoAuditDto } from "../dto";
@@ -91,7 +92,7 @@ export class PhotoController {
   @UseGuards(AuthGuard, RoleGuard)
   @Post("audit/:pid")
   async auditPhoto(
-    @Param("pid", ParseIntPipe) pid: number,
+    @Param("pid", new IntPipe("pid")) pid: number,
     @Token("sub") uid: number,
     @Body(new ValidationPipe()) photoAuditDto: PhotoAuditDto
   ) {
@@ -115,7 +116,7 @@ export class PhotoController {
   @Get("list/:uid")
   async getUserPhotos(
     @Req() requset: Request,
-    @Param("uid", ParseIntPipe) uid: number,
+    @Param("uid", new IntPipe("uid")) uid: number,
     @Query("offset", OffsetPipe) offset: number,
     @Query("limit", LimitPipe) limit: number,
     @Query("status", StatusPipe) status: AuditStatus | undefined
@@ -224,5 +225,16 @@ export class PhotoController {
     @Query("pids", NumListPipe) pids: number[]
   ) {
     return await this.photoService.getPhotos(pids, uid);
+  }
+  // 获取照片简要信息(所有的照片)
+  @Role(Roles.Admin, Roles.SuperAdmin)
+  @UseGuards(AuthGuard, RoleGuard)
+  @Get("all/briefly")
+  async getPhotosBriefly(
+    @Query("limit", LimitPipe) limit: number,
+    @Query("offset", OffsetPipe) offset: number,
+    @Query("desc", DescPipe) desc: boolean
+  ) {
+    return await this.photoService.getPhotoList(limit, offset, desc);
   }
 }

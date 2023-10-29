@@ -1,8 +1,12 @@
 import { Provider } from "@nestjs/common";
-import { Photo } from "./model/photo.model";
-import { UserLikePhoto } from "./model/user-like-photo.model";
-import { UserCommentPhoto } from "./model/user-comment-photo";
-import { UserLikeComment } from "./model/user-like-comment.model";
+import {
+  Photo,
+  UserLikePhoto,
+  UserCommentPhoto,
+  UserLikeComment,
+  PhotoTags,
+  PhotoWithTags,
+} from "./model";
 import { EventEmitter } from "node:events";
 
 export const photoProvider: Provider[] = [
@@ -21,6 +25,14 @@ export const photoProvider: Provider[] = [
   {
     provide: "UserLikeCommentModel",
     useValue: UserLikeComment,
+  },
+  {
+    provide: "PhotoTags",
+    useValue: PhotoTags,
+  },
+  {
+    provide: "PhotoWithTags",
+    useValue: PhotoWithTags,
   },
   {
     // 订阅照片审核推送的用户

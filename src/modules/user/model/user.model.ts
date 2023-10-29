@@ -1,58 +1,79 @@
-import { Table, Model, Column, PrimaryKey, Comment, DataType, AutoIncrement, Length, Default, HasMany, BelongsTo, BelongsToMany } from "sequelize-typescript";
-import { Role, Roles, roles } from "../../auth/role";
-import { Photo } from "../../photo/model/photo.model";
-import { UserLikePhoto } from "../../photo/model/user-like-photo.model";
-import { UserCommentPhoto } from "../../photo/model/user-comment-photo";
-import { UserLikeComment } from "../../photo/model/user-like-comment.model";
-@Table({
-  tableName: 'user'
-})
-export class User extends Model<User>{
+import {
+  Table,
+  Model,
+  Column,
+  PrimaryKey,
+  Comment,
+  DataType,
+  AutoIncrement,
+  Length,
+  HasMany,
+  BelongsToMany,
+} from "sequelize-typescript";
+import { Role, roles } from "../../auth/role";
+import {
+  Photo,
+  UserLikePhoto,
+  UserCommentPhoto,
+  UserLikeComment,
+  PhotoTags,
+} from "../../photo/model";
 
-  @Comment('账户id')
+@Table({
+  tableName: "user",
+})
+export class User extends Model<User> {
+  @Comment("账户id")
   @PrimaryKey
   @AutoIncrement
   @Column
-  uid: number;
+  uid!: number;
 
-  @Comment('账户名称')
+  @Comment("账户名称")
   @Column(DataType.STRING)
-  username: string;
+  username!: string;
 
-  @Comment('账户密码')
+  @Comment("账户密码")
   @Column(DataType.STRING)
-  password: string;
+  password!: string;
 
   @Length({ max: 512 })
-  @Comment('账户头像')
+  @Comment("账户头像")
   @Column(DataType.STRING)
-  avatar: string;
+  avatar!: string;
 
-  @Comment('用户角色')
+  @Comment("用户角色")
   @Column(DataType.ENUM(...roles))
   // @Default(Roles.User)
-  role: Role
+  role!: Role;
 
   // 一个作者有多个照片 (这样设置后，publish_uid会作为Photo表的外键，引用User表的uid，默认引用主键)
-  @HasMany(() => Photo, 'publish_uid')
-  authorPhotos: Photo[]
+  @HasMany(() => Photo, "publish_uid")
+  authorPhotos!: Photo[];
 
   // 一个审核可以审核多个照片 (这样设置后，audit_uid会作为Photo表的外键，引用User表的uid，自定义指定引用User的uid字段)
   @HasMany(() => Photo, {
-    sourceKey: 'uid',
-    foreignKey: 'audit_uid'
+    sourceKey: "uid",
+    foreignKey: "audit_uid",
   })
-  auditPhotos: Photo[]
+  auditPhotos!: Photo[];
 
   // 一个用户可以喜欢多个照片
-  @BelongsToMany(() => Photo, () => UserLikePhoto, 'uid')
-  likePhotos: Photo[]
+  @BelongsToMany(() => Photo, () => UserLikePhoto, "uid")
+  likePhotos!: Photo[];
 
   // 一个用户可以评论多个照片
-  @BelongsToMany(() => Photo, () => UserCommentPhoto, 'uid')
-  commentedPhotos: Photo[]
+  @BelongsToMany(() => Photo, () => UserCommentPhoto, "uid")
+  commentedPhotos!: Photo[];
 
   // 一个用户可以点赞多个评论
-  @BelongsToMany(() => UserCommentPhoto, () => UserLikeComment, 'uid')
-  likedComments: UserCommentPhoto[]
+  @BelongsToMany(() => UserCommentPhoto, () => UserLikeComment, "uid")
+  likedComments!: UserCommentPhoto[];
+
+  // 一个用户可以创建多个标签
+  @HasMany(() => PhotoTags, {
+    sourceKey: "uid",
+    foreignKey: "creator_uid",
+  })
+  tags!: PhotoTags[];
 }

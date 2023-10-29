@@ -2,7 +2,6 @@ import {
   MiddlewareConsumer,
   Module,
   NestModule,
-  Req,
   RequestMethod,
 } from "@nestjs/common";
 import { photoProvider } from "./photo.provider";
@@ -11,12 +10,14 @@ import {
   UserLikePhotoController,
   UserCommentPhotoController,
   PhotoEventsController,
+  PhotoTagsController,
 } from "./controller";
 import { UserModule } from "../user/user.module";
 import {
   PhotoService,
   UserCommentPhotoService,
   UserLikePhotoService,
+  PhotoTagsService,
 } from "./service";
 import { TokenParseMiddleware } from "../../common/middleware";
 
@@ -27,12 +28,14 @@ import { TokenParseMiddleware } from "../../common/middleware";
     PhotoService,
     UserLikePhotoService,
     UserCommentPhotoService,
+    PhotoTagsService,
   ],
   controllers: [
     PhotoController,
     UserLikePhotoController,
     UserCommentPhotoController,
     PhotoEventsController,
+    PhotoTagsController,
   ],
   exports: [PhotoService, UserCommentPhotoService, UserModule],
 })

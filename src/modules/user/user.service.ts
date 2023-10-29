@@ -10,7 +10,7 @@ import tips from "../../common/tips";
 import { PASSWORD_SECRET } from "../../config";
 import { Role, Roles } from "../auth/role";
 import { UserCreateDto, UserUpdateDto, UserUpdatePasswordDto } from "./dto";
-import { User } from "./model/user.model";
+import { User } from "./model";
 
 @Injectable()
 export class UserService {

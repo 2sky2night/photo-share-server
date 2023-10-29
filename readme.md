@@ -22,7 +22,8 @@
 
 ## 实体
 
-用户(uid、username、password、avatar、role)、照片(pid、title、content、photos)。
+1. 用户(uid、username、password、avatar、role)
+2. 照片(pid、title、content、photos)
 
 ### 联系
 
@@ -32,7 +33,13 @@
 
 用户点赞照片(添加联系表，uid、pid):一个用户可以点赞多个照片，一个照片也能被多个用户点赞 （用户--（点赞）--照片）多对多
 
-用户评论照片(添加评论表，uid、content、pid)，一个用户可以评论多个照片，一个照片也能被多个用户评论 (用户--（评论）--照片)
+用户评论照片(添加评论表，uid、content、pid)，一个用户可以评论多个照片，一个照片也能被多个用户评论 (用户--（评论）--照片) 多对多
+
+用户点赞评论(添加联系表，uid、cid)，一个用户可以点赞多个评论，一个评论可以被多个用户点赞(用户--（点赞）--评论) 多对多
+
+用户可以创建标签(添加照片标签(tid、name_zh、name_en、description)),一个用户可以创建多个标签，一个标签只有一个作者 (用户--（创建）--标签) 一对多
+
+照片拥有标签(添加联系表,pid,tid)，一个照片可以拥有多个标签，一个标签可以拥有多个照片(照片--（拥有）--标签) 多对多
 
 ### 模型
 
@@ -40,9 +47,15 @@ user:uid、username、password、avatar、role
 
 photo:pid、title、content、photos、publish_uid、audit_uid、audit_time、audit_desc、status
 
+photoTags:tid、name_zh、name_en、descr
+
 userLikePhoto:pid、uid
 
 userCommentPhoto:pid、uid、content
+
+userLikeComment:uid、cid
+
+photoWithTags:pid、tid
 
 ## 服务
 
@@ -56,7 +69,7 @@ Mysql2：数据库驱动
 
 ### 一、环境搭建
 
-​	下面是手动搭建nest项目的过程，也可以使用官方脚手架搭建:
+​ 下面是手动搭建 nest 项目的过程，也可以使用官方脚手架搭建:
 
 ```shell
 npm i -g @nestjs/cli
@@ -2352,7 +2365,7 @@ import { MulterModule } from "@nestjs/platform-express";
 
 上传的照片不保存在数据库中，保存到本地磁盘中，再通过中间件挂载照片资源。上传照片成功后返回资源地址。在上传图片时，需要把图片尺寸也保持到文件名称当中，方便前端处理图片。
 
- 文件模块包含了上传`照片`、`头像`，分了两个文件夹来保存资源，方便区分
+文件模块包含了上传`照片`、`头像`，分了两个文件夹来保存资源，方便区分
 
 ```ts
 import {
@@ -2498,13 +2511,13 @@ export class FileController {
 
 ### 七、搜索模块
 
- 用户可以对数据进行检索。
+用户可以对数据进行检索。
 
 #### Controller
 
 ##### Photo 模块
 
- 搜索照片的模块，通过角色来分成了两个接口。
+搜索照片的模块，通过角色来分成了两个接口。
 
 ```ts
 import { Controller, Get, Query, UseGuards } from "@nestjs/common";

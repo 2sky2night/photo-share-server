@@ -4,9 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { UserCommentPhoto } from "../model/user-comment-photo";
+import { UserCommentPhoto } from "../model/user-comment-photo.model";
 import { CommentCreateDto } from "../dto/comment-create.dto";
-import { UserLikeComment } from "../model/user-like-comment.model";
+import { UserLikeComment } from "../model";
 import tips from "../../../common/tips";
 import { UserService } from "../../user/user.service";
 import { Roles } from "../../auth/role";
@@ -163,6 +163,15 @@ export class UserCommentPhotoService {
     };
   }
   /**
+   * 获取某个评论(管理员调用)
+   * @param cid 当前评论的id
+   * @param currentUid 当前登录的用户
+   */
+  async getComment(cid: number) {
+    const comment = await this.find(cid, true);
+    return await this.getCommentInfo(comment, undefined);
+  }
+  /**
    * 用户获取照片评论
    * @param pid 照片id
    * @param offset 偏移量
@@ -206,7 +215,7 @@ export class UserCommentPhotoService {
     };
   }
   /**
-   * user获取评论详情信息，包括当前用户是否点赞
+   * 获取评论详情信息，包括当前用户是否点赞
    * @param comments 评论列表
    * @param currentUid 当前登录的id
    * @returns 详情信息列表
@@ -216,26 +225,33 @@ export class UserCommentPhotoService {
     currentUid: number | undefined
   ) {
     return await Promise.all(
-      comments.map(async (comment) => {
-        // 查询评论点赞数量
-        const like_count = await this.findLikeCount(comment.cid);
-        // 查询当前用户是否点赞
-        const is_liked = await this.findUserLikeComment(
-          currentUid,
-          comment.cid
-        );
-        // 查询评论的作者
-        const user = await this.userService.findUserWithoutPasswordAndRole(
-          comment.uid
-        );
-        return {
-          ...comment.dataValues,
-          like_count,
-          is_liked,
-          user,
-        };
-      })
+      comments.map((item) => this.getCommentInfo(item, currentUid))
     );
+  }
+  /**
+   * 查询评论的详情信息
+   * @param comment 评论项
+   * @param currentUid 当前登录的用户
+   * @returns
+   */
+  async getCommentInfo(
+    comment: UserCommentPhoto,
+    currentUid: number | undefined
+  ) {
+    // 查询评论点赞数量
+    const like_count = await this.findLikeCount(comment.cid);
+    // 查询当前用户是否点赞
+    const is_liked = await this.findUserLikeComment(currentUid, comment.cid);
+    // 查询评论的作者
+    const user = await this.userService.findUserWithoutPasswordAndRole(
+      comment.uid
+    );
+    return {
+      ...comment.dataValues,
+      like_count,
+      is_liked,
+      user,
+    };
   }
   /**
    * 用户是否点赞过评论
@@ -267,5 +283,18 @@ export class UserCommentPhotoService {
    */
   async findLikeCount(cid: number) {
     return (await this.ULCModel.findAll({ where: { cid } })).length;
+  }
+  /**
+   * 查找某个评论
+   * @param cid 评论id
+   * @param hasDele 是否包含被删除的评论
+   */
+  async find(cid: number, hasDele = true) {
+    const comment = await this.findComment(cid, hasDele);
+    if (comment) {
+      return comment;
+    } else {
+      throw new NotFoundException(tips.notFound("评论"));
+    }
   }
 }
