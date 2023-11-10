@@ -89,6 +89,7 @@ export class Photo extends Model<Photo> {
   @BelongsToMany(() => User, () => UserCommentPhoto, "pid")
   commentor!: User[];
 
+  // 一个照片有多个标签
   @BelongsToMany(() => PhotoTags, () => PhotoWithTags)
   tags!: PhotoTags[];
 

@@ -1,7 +1,9 @@
 import { BadRequestException, PipeTransform } from "@nestjs/common";
 import tips from "../tips";
 
-export class IntPipe implements PipeTransform<string, number | undefined> {
+export class IntPipe
+  implements PipeTransform<string | undefined, number | undefined>
+{
   /**
    * 错误键
    */
@@ -23,15 +25,24 @@ export class IntPipe implements PipeTransform<string, number | undefined> {
     this.isOptional = isOptional;
     if (errorKey) this.errorKey = errorKey;
   }
-  transform(value: string) {
-    if (this.isOptional) return undefined;
-    const _value = +value;
-    if (isNaN(_value)) {
-      throw new BadRequestException(
-        this.errorKey ? tips.paramsError(this.errorKey) : tips.paramsError_
-      );
+  transform(value: string | undefined) {
+    if (typeof value === "undefined") {
+      if (this.isOptional) {
+        return undefined;
+      } else {
+        throw new BadRequestException(
+          this.errorKey ? tips.paramsError(this.errorKey) : tips.paramsError_
+        );
+      }
     } else {
-      return _value;
+      const _value = +value;
+      if (isNaN(_value)) {
+        throw new BadRequestException(
+          this.errorKey ? tips.paramsError(this.errorKey) : tips.paramsError_
+        );
+      } else {
+        return _value
+      }
     }
   }
 }

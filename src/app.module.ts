@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Global, Module } from "@nestjs/common";
 import {
   AuthModule,
   PhotoModule,
@@ -7,9 +7,11 @@ import {
   SearchModule,
 } from "./modules";
 
+@Global()
 @Module({
   imports: [DatabaseModule, AuthModule, PhotoModule, FileModule, SearchModule],
   controllers: [],
   providers: [],
+  exports: [DatabaseModule],
 })
 export class AppModule {}

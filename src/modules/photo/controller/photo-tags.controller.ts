@@ -1,22 +1,26 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
   Param,
-  ParseIntPipe,
   Post,
   Put,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { PhotoTagsService } from "../service";
-import { IntPipe, ValidationPipe } from "../../../common/pipe";
+import {
+  DescPipe,
+  IntPipe,
+  LimitPipe,
+  OffsetPipe,
+  ValidationPipe,
+} from "../../../common/pipe";
 import { TagsAlterDto, TagsCreateDto } from "../dto";
 import { Role, Token } from "../../../common/decorator";
 import { Roles } from "../../../modules/auth/role";
 import { AuthGuard, RoleGuard } from "../../../common/guard";
-import tips from "../../../common/tips";
 
 @Controller("/photo/tags")
 export class PhotoTagsController {
@@ -70,5 +74,35 @@ export class PhotoTagsController {
   ) {
     await this.PTService.alter(tid, tagsAlterDto);
     return null;
+  }
+  /**
+   * 管理员获取标签
+   */
+  @Role(Roles.Admin, Roles.SuperAdmin)
+  @UseGuards(AuthGuard, RoleGuard)
+  @Get("list")
+  async list(
+    @Query("limit", LimitPipe) limit: number,
+    @Query("offset", OffsetPipe) offset: number,
+    @Query("desc", DescPipe) desc: boolean,
+    @Query("creator_uid", new IntPipe("creator_uid", true))
+    creator_uid: number | undefined
+  ) {
+    return await this.PTService.list(limit, offset, desc, creator_uid);
+  }
+  /**
+   * 获取标签
+   * @param limit 长度 
+   * @param offset 偏移量
+   * @param desc 是否降序
+   * @returns 
+   */
+  @Get("/all")
+  async userGetList(
+    @Query("limit", LimitPipe) limit: number,
+    @Query("offset", OffsetPipe) offset: number,
+    @Query("desc", DescPipe) desc: boolean
+  ) {
+    return await this.PTService.userGetList(limit,offset,desc)
   }
 }

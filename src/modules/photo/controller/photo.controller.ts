@@ -5,14 +5,13 @@ import {
   UseGuards,
   BadRequestException,
   Param,
-  ParseIntPipe,
   Get,
   Query,
   Req,
   UseInterceptors,
   Res,
 } from "@nestjs/common";
-import { Response as ResType, query } from "express";
+import { Response as ResType } from "express";
 import { Response } from "../../../common/response";
 import {
   LimitPipe,
@@ -51,6 +50,7 @@ export class PhotoController {
     @Token("sub") uid: number,
     @Body(new ValidationPipe()) photoCreateDto: PhotoCreateDto
   ) {
+    // 校验photos字段
     const { photos } = photoCreateDto;
     if (photos.some((url) => typeof url !== "string")) {
       throw new BadRequestException("照片项的url必须是一个字符串!");
@@ -80,6 +80,7 @@ export class PhotoController {
       title: photoCreateDto.title,
       content: photoCreateDto.content,
       photos: photosForm,
+      tids: photoCreateDto.tids,
     });
   }
   /**
@@ -236,5 +237,22 @@ export class PhotoController {
     @Query("desc", DescPipe) desc: boolean
   ) {
     return await this.photoService.getPhotoList(limit, offset, desc);
+  }
+  // 根据标签获取照片
+  @Get("/byTags/list")
+  async getPhotosByTags(
+    @TokenOptional("sub") uid: number | undefined,
+    @Query("limit", LimitPipe) limit: number,
+    @Query("offset", OffsetPipe) offset: number,
+    @Query("desc", DescPipe) desc: boolean,
+    @Query("tid", new IntPipe("tid")) tid: number
+  ) {
+    return await this.photoService.getPhotosByTags(
+      limit,
+      offset,
+      desc,
+      tid,
+      uid
+    );
   }
 }

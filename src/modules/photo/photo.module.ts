@@ -12,6 +12,7 @@ import {
   PhotoEventsController,
   PhotoTagsController,
 } from "./controller";
+// 不要向/src/module/index.ts中引入UserModule，因为这个文件中有个模块DataBaseModule？会导致循环引用
 import { UserModule } from "../user/user.module";
 import {
   PhotoService,

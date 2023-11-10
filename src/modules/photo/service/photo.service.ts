@@ -7,16 +7,34 @@ import {
 } from "@nestjs/common";
 import type { EventEmitter } from "node:events";
 import sequelize from "sequelize";
+import { Sequelize } from "sequelize-typescript";
 import tips from "../../../common/tips";
 import { AuditStatus, AuditStatusList } from "../../../types/photo";
 import { removeUndefined } from "../../../utils/tools";
 import { Roles } from "../../auth/role";
 import { UserService } from "../../user/user.service";
 import { PhotoAuditDto } from "../dto";
-import { UserCommentPhoto, UserLikePhoto, Photo } from "../model";
+import {
+  Photo,
+  PhotoTags,
+  PhotoWithTags,
+  UserCommentPhoto,
+  UserLikePhoto,
+} from "../model";
+import { PhotoTagsService } from "./";
+import { Op } from "sequelize";
 
 @Injectable()
 export class PhotoService {
+  /**
+   * 照片标签服务层
+   */
+  photoTagsService = new PhotoTagsService(
+    PhotoTags,
+    PhotoWithTags,
+    Photo,
+    this.userService
+  );
   constructor(
     readonly userService: UserService,
     @Inject("Pubsub") readonly Pubsub: EventEmitter,
@@ -35,8 +53,14 @@ export class PhotoService {
    */
   async create(
     uid: number,
-    photoCreateDto: { title: string; content: string; photos: any }
+    photoCreateDto: {
+      title: string;
+      content: string;
+      photos: any;
+      tids?: number[];
+    }
   ) {
+    // 创建照片
     // @ts-ignore
     const photo = this.photoModel.build({
       title: photoCreateDto.title,
@@ -44,8 +68,19 @@ export class PhotoService {
       photos: JSON.stringify(photoCreateDto.photos),
       publish_uid: uid,
     });
-    await photo.save();
-    return photo;
+    if (photoCreateDto.tids && photoCreateDto.tids.length) {
+      // 查询标签是否存在
+      await this.photoTagsService.findList(photoCreateDto.tids);
+      // 保存照片
+      const result = await photo.save();
+      // 给照片添加标签
+      await this.photoTagsService.setPhotoTags(result.pid, photoCreateDto.tids);
+      return result;
+    } else {
+      // 保存照片
+      const result = await photo.save();
+      return result;
+    }
   }
   /**
    * 审核照片
@@ -304,7 +339,62 @@ export class PhotoService {
       limit,
     };
   }
+  /**
+   * 根据照片标签获取照片列表
+   * @param limit 长度
+   * @param offset 偏移量
+   * @param desc 是否降序
+   * @param tid 标签id
+   * @param uid 当前登录的用户
+   */
+  async getPhotosByTags(
+    limit: number,
+    offset: number,
+    desc: boolean,
+    tid: number,
+    uid: number | undefined
+  ) {
+    // 标签是否存在
+    await this.photoTagsService.find(tid, true);
+    // 查询该标签下的照片
+    const { rows } = await this.photoTagsService.PWTModel.findAndCountAll({
+      where: { tid },
+      order: [["createdAt", desc ? "desc" : "asc"]],
+    });
+    // 只查询出所有被通过的照片
+    const photos = await this.getPhotosByid(rows.map((item) => item.pid));
+    // 根据偏移量和长度截取出需要查询的照片的详情信息
+    const list = await this.getPhotosInfo(
+      photos.slice(offset, offset + limit),
+      uid
+    );
+
+    return {
+      list,
+      total: photos.length,
+      limit,
+      offset,
+      desc,
+      has_more: photos.length > limit + offset,
+    };
+  }
   /**--------业务封装的分割线-------*/
+  /**
+   * 根据照片id列表获取照片基本信息
+   * @param ids id列表
+   * @param all 真全部，假只看通过
+   * @returns
+   */
+  getPhotosByid(ids: number[], all = false) {
+    return this.photoModel.findAll({
+      where: {
+        status: all ? {} : 1,
+        pid: {
+          [Op.in]: ids,
+        },
+      },
+    });
+  }
   /**
    * 审核结果推送
    * @param photo
@@ -341,12 +431,15 @@ export class PhotoService {
     const data = this.formatPhoto(photo);
     // 获取评论的数量
     const comment_count = await this.getPhotoCommentCount(photo.pid);
+    // 获取该照片的标签
+    const tags = await this.photoTagsService.getPhotoTags(photo.pid);
     return {
       ...data,
       user,
       like_count,
       is_liked,
       comment_count,
+      tags,
     };
   }
   /**

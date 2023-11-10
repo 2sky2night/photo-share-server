@@ -27,11 +27,11 @@ export const photoProvider: Provider[] = [
     useValue: UserLikeComment,
   },
   {
-    provide: "PhotoTags",
+    provide: "PhotoTagsModel",
     useValue: PhotoTags,
   },
   {
-    provide: "PhotoWithTags",
+    provide: "PhotoWithTagsModel",
     useValue: PhotoWithTags,
   },
   {

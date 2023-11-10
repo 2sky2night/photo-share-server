@@ -59,7 +59,7 @@ export class FileController {
     let newName = `${crypto.randomUUID({
       disableEntropyCache: true,
     })}_w${width}_h${height}_${fileUploadPhotoDto.originalname}`;
-    // 清空文件名称的空格
+    // 替换文件名称的空格
     while (newName.includes(" ")) {
       newName = newName.replace(" ", "_");
     }
