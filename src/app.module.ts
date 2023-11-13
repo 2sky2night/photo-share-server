@@ -5,11 +5,19 @@ import {
   FileModule,
   DatabaseModule,
   SearchModule,
+  JWTModule,
 } from "./modules";
 
 @Global()
 @Module({
-  imports: [DatabaseModule, AuthModule, PhotoModule, FileModule, SearchModule],
+  imports: [
+    DatabaseModule,
+    AuthModule,
+    PhotoModule,
+    FileModule,
+    SearchModule,
+    JWTModule,
+  ],
   controllers: [],
   providers: [],
   exports: [DatabaseModule],

@@ -13,8 +13,8 @@ import {
 import { Role, Roles } from "./role";
 import { decrpty } from "../../common/crypto";
 import { PASSWORD_SECRET } from "../../config";
-import { JwtService } from "@nestjs/jwt";
 import tips from "../../common/tips";
+import { JWTService } from "../jwt/services";
 
 @Injectable()
 export class AuthService {
@@ -22,7 +22,7 @@ export class AuthService {
     // 注入用户服务层 不需要使用Inject来注入，因为UserService已经作为模块的提供者了
     private userService: UserService,
     // 注入jwt
-    private jwtService: JwtService
+    private jwtService: JWTService
   ) {}
   /**
    * 注册
@@ -45,9 +45,10 @@ export class AuthService {
     if (_dePassword === password) {
       // 下发token
       return {
-        access_token: await this.jwtService.signAsync({
-          sub: user.uid,
-        }),
+        // 短期token
+        access_token: await this.jwtService.signAccessToken(user.uid),
+        // 长期token
+        refresh_token: await this.jwtService.signRefreshToken(user.uid),
       };
     } else {
       throw new BadRequestException(tips.loginError);
