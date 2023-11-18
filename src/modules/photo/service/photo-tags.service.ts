@@ -89,11 +89,21 @@ export class PhotoTagsService {
     { descriptionEN, descriptionZH, nameEN, nameZH }: TagsAlterDto
   ) {
     const tags = await this.find(tid, true);
-    if (descriptionEN) {
-      tags.set("description_en", descriptionEN);
+    if (typeof descriptionEN === "string") {
+      if (descriptionEN.length) {
+        tags.set("description_en", descriptionEN);
+      } else {
+        // 空串 设置为null
+        tags.set("description_en", null);
+      }
     }
-    if (descriptionZH) {
-      tags.set("description_zh", descriptionZH);
+    if (typeof descriptionZH === "string") {
+      if (descriptionZH.length) {
+        tags.set("description_zh", descriptionZH);
+      } else {
+        // 空串 设置为null
+        tags.set("description_zh", null);
+      }
     }
     if (nameEN) {
       tags.set("name_en", nameEN);

@@ -7,6 +7,7 @@ import {
   SearchModule,
   JWTModule,
 } from "./modules";
+import { DataModule } from "./modules/data/data.module";
 
 @Global()
 @Module({
@@ -17,9 +18,9 @@ import {
     FileModule,
     SearchModule,
     JWTModule,
+    DataModule,
   ],
   controllers: [],
   providers: [],
-  exports: [DatabaseModule],
 })
 export class AppModule {}

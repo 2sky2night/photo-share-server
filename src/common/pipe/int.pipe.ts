@@ -12,6 +12,10 @@ export class IntPipe
    * 是否可选，默认不可选
    */
   isOptional: boolean;
+  /**
+   * 无符号数
+   */
+  unsigned: boolean;
   constructor(
     /**
      * 错误键，传入可以有更好的错误提示
@@ -20,10 +24,15 @@ export class IntPipe
     /**
      * 是否可选，默认不可选
      */
-    isOptional = false
+    isOptional = false,
+    /**
+     * 无符号数
+     */
+    unsigned = false
   ) {
     this.isOptional = isOptional;
     if (errorKey) this.errorKey = errorKey;
+    this.unsigned = unsigned;
   }
   transform(value: string | undefined) {
     if (typeof value === "undefined") {
@@ -41,7 +50,13 @@ export class IntPipe
           this.errorKey ? tips.paramsError(this.errorKey) : tips.paramsError_
         );
       } else {
-        return _value
+        if (!this.unsigned || (this.unsigned && _value >= 0)) {
+          return _value;
+        } else {
+          throw new BadRequestException(
+            this.errorKey ? tips.paramsError(this.errorKey) : tips.paramsError_
+          );
+        }
       }
     }
   }
