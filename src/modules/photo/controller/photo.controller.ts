@@ -50,8 +50,13 @@ export class PhotoController {
     @Token("sub") uid: number,
     @Body(new ValidationPipe()) photoCreateDto: PhotoCreateDto
   ) {
+    const { photos, tids } = photoCreateDto;
+    // 校验tids字段，不允许重复添加标签
+    if (Array.from(new Set(tids)).length !== tids.length) {
+      // 有重复字段!
+      throw new BadRequestException("不允许重复添加标签!");
+    }
     // 校验photos字段
-    const { photos } = photoCreateDto;
     if (photos.some((url) => typeof url !== "string")) {
       throw new BadRequestException("照片项的url必须是一个字符串!");
     }

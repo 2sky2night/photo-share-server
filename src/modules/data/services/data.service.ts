@@ -39,19 +39,19 @@ export class DataService {
    * @param limit 前x条
    */
   async photoViewsList(days: number | undefined, limit: number | undefined) {
-    if (days) {
-      // 非当日
+    if (days !== undefined) {
+      // 多少天前
       const result = await this.query<PhotoViewsResult>(
         `SELECT pid,title,views from photo WHERE \`status\`=1 and DATE(createdAt) BETWEEN DATE_SUB(CURDATE(),INTERVAL ${days} DAY) and CURDATE() ORDER BY views desc ${
-          limit ? `limit ${limit}` : ""
+          limit !== undefined ? `limit ${limit}` : ""
         };`
       );
       return result;
     } else {
-      // 当日
+      // 全部
       const result = await this.query<PhotoViewsResult>(
-        `SELECT pid,title,views from photo WHERE \`status\`=1 and DATE(createdAt) = CURDATE() ORDER BY views desc ${
-          limit ? "" : `limit ${limit};`
+        `SELECT pid,title,views from photo WHERE \`status\`=1 ORDER BY views desc ${
+          limit !== undefined ? `limit ${limit};` : ""
         }`
       );
       return result;
@@ -59,22 +59,11 @@ export class DataService {
   }
   /**
    * 获取各个标签下的照片数量（倒叙）
+   * @param days 多少天前，不传就是全部
    * @param limit 前x条
    */
-  async tagsPhotoCount(limit: number | undefined) {
-    if (limit === undefined) {
-      const reuslt = await this.query<TagsPhotoCountResult>(`SELECT
-	photo_tags.tid,
-	photo_tags.name_en,
-	photo_tags.name_zh,
-	result.total
-FROM
-	( SELECT tid, COUNT(*) AS total FROM photo_with_tags GROUP BY tid ) AS result,
-	photo_tags
-WHERE
-	result.tid = photo_tags.tid`);
-      return reuslt;
-    } else {
+  async tagsPhotoCount(days: number | undefined, limit: number | undefined) {
+    if (days === undefined) {
       const result = await this.query<TagsPhotoCountResult>(`SELECT
 	photo_tags.tid,
 	photo_tags.name_en,
@@ -87,8 +76,26 @@ FROM
 	FROM
 		( SELECT tid, COUNT(*) AS total FROM photo_with_tags GROUP BY tid ) AS tags_count
 	ORDER BY
-		total DESC
-		LIMIT ${limit} OFFSET 0
+		total DESC ${limit !== undefined ? `limit ${limit}` : ""}
+	) AS result,
+	photo_tags
+WHERE
+	result.tid = photo_tags.tid`);
+      return result;
+    } else {
+      const result = await this.query<TagsPhotoCountResult>(`SELECT
+	photo_tags.tid,
+	photo_tags.name_en,
+	photo_tags.name_zh,
+	result.total
+FROM
+	(
+	SELECT
+		*
+	FROM
+		( SELECT tid, COUNT(*) AS total FROM photo_with_tags where DATE(createdAt) BETWEEN DATE_SUB(CURDATE(), INTERVAL ${days} DAY) AND CURDATE() GROUP BY tid ) AS tags_count
+	ORDER BY
+		total DESC ${limit !== undefined ? `limit ${limit}` : ""}
 	) AS result,
 	photo_tags
 WHERE
@@ -154,7 +161,7 @@ WHERE
       ( SELECT publish_uid AS uid, COUNT(*) AS total FROM photo GROUP BY publish_uid ) AS photo_result
     ORDER BY
       total DESC
-      ${limit ? `limit ${limit}` : ""}
+      ${limit !== undefined ? `limit ${limit}` : ""}
     ) AS result,
     \`user\`
   WHERE
@@ -176,7 +183,7 @@ WHERE
        ) AS photo_result
     ORDER BY
       total DESC
-      ${limit ? `limit ${limit}` : ""}
+      ${limit !== undefined ? `limit ${limit}` : ""}
     ) AS result,
     \`user\`
   WHERE
