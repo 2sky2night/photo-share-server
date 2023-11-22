@@ -33,7 +33,7 @@ export class FileController {
       throw new BadRequestException(tips.pleaseUploadImg);
     }
     // 静态资源根路径
-    const rootPath = path.resolve("./src/static");
+    const rootPath = path.resolve(__dirname, "../../static");
 
     // 校验静态资源文件是否存在
     // 图片路径
@@ -100,9 +100,9 @@ export class FileController {
       throw new BadRequestException(tips.pleaseUploadImg);
     }
     // 静态资源文件夹根路径
-    const rootPath = path.resolve("./src/static");
+    const rootPath = path.resolve(__dirname, "../../static");
     // 头像静态资源根路径
-    const avatarPath = path.resolve("./src/static/avatar");
+    const avatarPath = path.resolve(rootPath, "./avatar");
 
     if (!fs.existsSync(rootPath)) {
       // 不存在static文件夹

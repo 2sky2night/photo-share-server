@@ -77,7 +77,7 @@ function responseImg(
 export function StaticImgMiddleware(req: Request, res: Response, next: any) {
   if (req.path.startsWith("/static")) {
     // 静态资源路径是否存在?
-    const rootPath = path.resolve("./src/static");
+    const rootPath = path.resolve(__dirname, "../../static");
     if (!fs.existsSync(rootPath)) {
       res.status(500).json({
         code: 500,
@@ -91,12 +91,12 @@ export function StaticImgMiddleware(req: Request, res: Response, next: any) {
       // 因为发送请求时会自动把url中某些字符转码，导致中文字符被转码，不能读取到对应的文件
       const staticPath = decodeURI(req.path.substring(7));
       // 拼接路径
-      const filePath = path.resolve("./src/static", `./${staticPath}`);
+      const filePath = path.resolve(rootPath, `./${staticPath}`);
       // 若文件存在
       if (fs.existsSync(filePath)) {
         // 设置响应头部为图片类型，若不设置响应体类型返回二进制文件会直接下载文件，这样设置会被解析成图片文件了
         res.setHeader("content-type", "image/jpeg");
-        // 设置强缓存 12小时
+        // 设置强缓存 12 小时
         res.setHeader("cache-control", "max-age=43200");
         if (req.query.q) {
           // 携带了查询参数q,q为图片质量
